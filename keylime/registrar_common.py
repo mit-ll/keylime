@@ -142,6 +142,7 @@ class ProtectedHandler(BaseHandler):
                 "aik_tpm": agent.aik_tpm,
                 "ek_tpm": agent.ek_tpm,
                 "ekcert": agent.ekcert,
+                "ek_ca_chain": agent.ek_ca_chain,
                 "mtls_cert": agent.mtls_cert,
                 "ip": agent.ip,
                 "port": agent.port,
@@ -290,6 +291,7 @@ class UnprotectedHandler(BaseHandler):
             json_body = json.loads(post_body)
 
             ekcert = json_body["ekcert"]
+            ek_ca_chain = json_body.get["ek_ca_chain"]
             aik_tpm = json_body["aik_tpm"]
             iak_tpm = b""
             idevid_tpm = b""
@@ -447,6 +449,7 @@ class UnprotectedHandler(BaseHandler):
                 "ek_tpm": ek_tpm,
                 "aik_tpm": aik_tpm,
                 "ekcert": ekcert,
+                "ek_ca_chain": ek_ca_chain,
                 "iak_tpm": iak_tpm,
                 "idevid_tpm": idevid_tpm,
                 "iak_cert": iak_cert,

@@ -27,6 +27,7 @@ class RegistrarData(TypedDict):
     aik_tpm: str
     ek_tpm: str
     ekcert: Optional[str]
+    ek_ca_chain: Optional[str]
     provider_keys: NotRequired[Dict[str, str]]
 
 
@@ -71,6 +72,10 @@ def getData(
             logger.critical("Error: unexpected http response body from Registrar Server: %s", response.status_code)
             return None
 
+        if "ek_ca_chain" not in response_body["results"]:
+            logger.critical("Error: unexpected http response body from Registrar Server: %s", response.status_code)
+            return None
+
         if "aik_tpm" not in response_body["results"]:
             logger.critical("Error: did not receive AIK from Registrar Server.")
             return None
@@ -100,6 +105,7 @@ def getData(
             "port": r["port"],
             "mtls_cert": r.get("mtls_cert"),
             "ekcert": r.get("ekcert"),
+            "ek_ca_chain": r.get("ek_ca_chain"),
         }
         if "provider_keys" in r:
             res["provider_keys"] = r["provider_keys"]
