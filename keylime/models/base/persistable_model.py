@@ -1,4 +1,6 @@
-from typing import Any, Mapping, Optional, Sequence
+from typing import Any, Optional, Sequence
+
+from sqlalchemy import or_
 
 from keylime.models.base.basic_model import BasicModel
 from keylime.models.base.db import db_manager
@@ -115,19 +117,57 @@ class PersistableModel(BasicModel, metaclass=PersistableModelMeta):
     INST_ATTRS: tuple[str, ...] = (*BasicModel.INST_ATTRS, "_db_mapping_inst")
 
     @classmethod
-    def all(cls, **filters: Mapping[str, Any]) -> Sequence["PersistableModel"]:
+    def _build_filter_criterion(cls, name, values):
+        sa_field = getattr(cls.db_mapping, name)
+
+        if values is None:
+            return []
+
+        if not isinstance(values, tuple):
+            values = (values,)
+
+        criteria = [sa_field == value for value in values]
+
+        return or_(*criteria)
+
+    @classmethod
+    def _query(cls, session, args, kwargs, subject=None):
+        if not subject:
+            subject = cls.db_mapping
+
+        filters = kwargs
+        sort_criteria = kwargs.get("sort_", ())
+
+        if not isinstance(sort_criteria, (list, tuple)):
+            sort_criteria = (sort_criteria,)
+
+        if sort_criteria:
+            del filters["sort_"]
+
+        if filters and args:
+            raise QueryInvalid("a PersistableModel query must use filters or SQLAlchemy expressions but not both")
+
+        if filters:
+            filter_criteria = [
+                cls._build_filter_criterion(name, values) for name, values in filters.items() if values is not None
+            ]
+        else:
+            filter_criteria = args
+
+        return session.query(subject).filter(*filter_criteria).order_by(*sort_criteria)
+
+    @classmethod
+    def all(cls, *args: Any, **kwargs: Any) -> Sequence["PersistableModel"]:
         if cls.schema_awaiting_processing:
             cls.process_schema()
 
-        filters = {name: value for name, value in filters.items() if value is not None}
-
         with db_manager.session_context() as session:
-            results: Sequence[object] = session.query(cls.db_mapping).filter_by(**filters).all()
+            results = cls._query(session, args, kwargs).all()
 
         return [cls(mapping_inst) for mapping_inst in results]
 
     @classmethod
-    def all_ids(cls, **filters: Mapping[str, Any]) -> Sequence[Any]:
+    def all_ids(cls, *args: Any, **kwargs: Any) -> Sequence[Any]:
         if cls.schema_awaiting_processing:
             cls.process_schema()
 
@@ -135,15 +175,14 @@ class PersistableModel(BasicModel, metaclass=PersistableModelMeta):
             raise QueryInvalid(f"model '{cls.__name__}' does not have a field which is used as an ID")
 
         id_column = cls.db_table.columns[cls.id_field.name]
-        filters = {name: value for name, value in filters.items() if value is not None}
 
         with db_manager.session_context() as session:
-            results = session.query(id_column).filter_by(**filters).all()
+            results = cls._query(session, args, kwargs, subject=id_column).all()
 
         return [getattr(row, cls.id_field.name) for row in results]
 
     @classmethod
-    def get(cls, record_id: Optional[Any] = None, **filters: Mapping[str, Any]) -> Optional["PersistableModel"]:
+    def get(cls, *args: Any, record_id: Optional[Any] = None, **kwargs: Any) -> Optional["PersistableModel"]:
         # pylint: disable=no-else-return
 
         if cls.schema_awaiting_processing:
@@ -153,12 +192,10 @@ class PersistableModel(BasicModel, metaclass=PersistableModelMeta):
             if not cls.id_field:
                 raise QueryInvalid(f"model '{cls.__name__}' does not have a field which is used as an ID")
 
-            filters[cls.id_field.name] = record_id
-
-        filters = {name: value for name, value in filters.items() if value is not None}
+            kwargs[cls.id_field.name] = record_id
 
         with db_manager.session_context() as session:
-            results = session.query(cls.db_mapping).filter_by(**filters).one_or_none()
+            results = cls._query(session, args, kwargs).first()
 
         if results:
             return cls(results)
@@ -176,6 +213,9 @@ class PersistableModel(BasicModel, metaclass=PersistableModelMeta):
         self._db_mapping_inst = mapping_inst
 
         for name, field in type(self).fields.items():
+            if not field.persist:
+                continue
+
             value = getattr(mapping_inst, name)
             self._committed[name] = field.data_type.db_load(value, db_manager.engine.dialect)
 
@@ -204,7 +244,9 @@ class PersistableModel(BasicModel, metaclass=PersistableModelMeta):
             self._committed[name] = value
 
             field = type(self).fields[name]
-            setattr(self._db_mapping_inst, name, field.data_type.db_dump(value, db_manager.engine.dialect))
+
+            if field.persist:
+                setattr(self._db_mapping_inst, name, field.data_type.db_dump(value, db_manager.engine.dialect))
 
         with db_manager.session_context() as session:
             session.add(self._db_mapping_inst)

@@ -13,7 +13,7 @@ fi
 
 ${PYLINT} --version
 
-${PYLINT} \
+PYTHONPATH="$(pwd)" ${PYLINT} \
 	*.py \
 	$(find ./keylime ./test ./scripts -name '*.py' ! -name 'oldtest.py' ! -path './keylime/da/examples/*.py')
 

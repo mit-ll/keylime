@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, LargeBinary, PickleType, String, Text, schema
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, LargeBinary, PickleType, String, Text, schema
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -51,6 +51,7 @@ class VerfierMain(Base):
     last_received_quote = Column(Integer)
     last_successful_attestation = Column(Integer)
     tpm_clockinfo = Column(JSONPickleType(pickler=JSONPickler))
+    accept_attestations = Column(Boolean)
 
 
 class VerifierAllowlist(Base):
@@ -72,3 +73,40 @@ class VerifierMbpolicy(Base):
     agent = relationship("VerfierMain", back_populates="mb_policy")
     name = Column(String(255), nullable=False)
     mb_policy = Column(Text().with_variant(Text(429400000), "mysql"))
+
+class VerifierAttestations(Base):
+    __tablename__ = "attestations"
+    # agent = relationship("VerfierMain", back_populates="attestation_details")
+    agent_id = Column(String(80), ForeignKey("verifiermain.agent_id"), primary_key=True)
+    index = Column(Integer, primary_key=True)
+    status = Column(String(), server_default="waiting")
+    failure_type = Column(String())
+    boottime = Column(String(32))
+    nonce = Column(LargeBinary)
+    nonce_created_at = Column(String(32))
+    nonce_expires_at = Column(String(32))
+    hash_algorithm = Column(String(10))
+    signing_scheme = Column(String(10))
+    starting_ima_offset = Column(Integer)
+    tpm_quote = Column(Text())
+    ima_entries = Column(Text())
+    mb_entries = Column(LargeBinary)
+    quoted_ima_entries_count = Column(Integer)
+    evidence_received_at = Column(String(32))
+
+class VerifierSessions(Base):
+    __tablename__ = "sessions"
+    # agent = relationship("VerfierMain", back_populates="attestation_details")
+    token = Column(String(22), primary_key = True)
+    agent_id = Column(String(80), ForeignKey("verifiermain.agent_id"))
+    active = Column(Boolean)
+    nonce = Column(LargeBinary)
+    hash_algorithm = Column(String(10))
+    signing_scheme = Column(String(10))
+    ak_attest = Column(LargeBinary)
+    ak_sign = Column(LargeBinary)
+    nonce_created_at = Column(String(32))
+    nonce_expires_at = Column(String(32))
+    pop_received_at = Column(String(32))
+    token_expires_at = Column(String(32))
+

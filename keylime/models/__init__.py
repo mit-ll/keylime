@@ -12,6 +12,7 @@ def is_tox_env() -> bool:
 if not is_tox_env():
     from keylime.models.base.da import da_manager
     from keylime.models.base.db import db_manager
+    from keylime.models.common import *
     from keylime.models.registrar import *
 
     __all__ = ["da_manager", "db_manager"]

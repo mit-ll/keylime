@@ -278,6 +278,30 @@ class Controller:
 
         self.send_response(status_code=code, body=response)
 
+    def redirect(self, path: str, code: int = 307) -> None:
+        """Directs the client to retrieve the requested resource at a different path. Uses a 307 status code by default
+        to indicate that the new location may be temporary, but you may wish to override this depending:
+
+            * Use 308 when the condition is permanent and the client should always request the resource at the new path.
+            * Use 303 when the client is using a non-GET request method such as POST but should issue the new request
+              using GET, such as when redirecting to an endpoint which does not represent the resource acted upon (like
+              a confirmation message).
+        
+        You probably do not want to use a 301 or 302 in most cases, as client behaviour is not reliable and may cause
+        security issues in specific edge cases.
+        
+        :param path: The path or URI to which to redirect
+        :param code: An optional integer to use as HTTP status code when performing the redirect (307 by default)
+
+        :raises: :class:`ValueError`: A status code other than 301, 302, 303, 307 or 308 was given
+        :raises: :class:`TypeError`: A given argument is of an incorrect type
+        """
+        if code not in (301, 302, 303, 307, 308):
+            raise ValueError(f"{code} is not a valid HTTP status code to indicate a redirect")
+
+        self.action_handler.set_header("Location", path)
+        self.send_response(code)
+
     def log_model_errors(self, model: "BasicModel", logger: "Logger") -> None:
         logger.warning("Data received was not valid because of the following reasons:")
 

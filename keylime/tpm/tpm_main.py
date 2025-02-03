@@ -4,13 +4,14 @@ import zlib
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives import serialization as crypto_serialization
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 
 from keylime import cert_utils, config, json, keylime_logging
 from keylime.agentstates import AgentAttestState, TPMClockInfo
-from keylime.common.algorithms import Hash
+from keylime.common.algorithms import Hash, Sign
 from keylime.failure import Component, Failure
 from keylime.ima import ima
 from keylime.ima.file_signatures import ImaKeyrings
@@ -49,6 +50,76 @@ class Tpm:
             raise
 
         return (keyblob, key)
+    
+    @staticmethod
+    def _unpackv(structure, offset=0):
+        """Extracts a variable-length buffer from a binary structure where the length of the buffer is specified by the
+        first two bytes of the structure.
+        """
+        structure = structure[offset:]
+        size, = struct.unpack_from(">H", structure)
+        structure = structure[2:]
+        buffer, = struct.unpack_from(f">{size}s", structure)
+        structure = structure[len(buffer):]
+        return buffer, structure
+    
+    @staticmethod
+    def verify_tpm_object(tpm_object: bytes, key: bytes, attest: bytes, sig: bytes, qual: Optional[bytes] = None, hash_alg: Optional[Hash] = None, sign_alg: Optional[Sign] = None) -> bool:
+        # Convert TPM pub key to Python public key object
+        pub = tpm2_objects.pubkey_from_tpm2b_public(key)
+
+        if not isinstance(pub, (RSAPublicKey, EllipticCurvePublicKey)):
+            raise ValueError(f"Unsupported key type {type(pub).__name__}")
+        
+        # Skip over qualifiedSigner field, so that we can locate the qualifying data which comes after
+        _key_name, rest = Tpm._unpackv(attest, 6)
+        # Extract buffer from extraData
+        qual_buffer, rest = Tpm._unpackv(rest)
+
+        # Check that qualifying data matches
+        if qual and qual != qual_buffer:
+            raise QualifyingDataMismatch(f"qualifying data does not match TPM2B_ATTEST structure")
+
+        # Check object is present in attest structure
+        if tpm2_objects.get_tpm2b_public_name(tpm_object) != rest[27:61].hex():
+            raise ObjectNameMismatch(f"name of TPM object not found in TPM2B_ATTEST structure")
+
+        # Calculate digest from attest info
+        digest, hashfunc = tpm_util.crypt_hash(attest, sig[2:4])
+        # Extract signature algorithm and size
+        sig_alg, _, sig_size = struct.unpack_from(">HHH", sig, 0)
+
+        # TODO: Implement pseudocode:
+        # if hashfunc != hash_alg:
+        #     raise HashAlgorithmMismatch(f"hash algorithm in TPM2B_ATTEST structure was not {hash_alg}")
+        
+        # if sig_alg != sign_alg:
+        #     raise SignatureAlgorithmMismatch(f"signature algorithm in TPM2B_ATTEST structure was not {sign_alg}")
+
+        # Compare signed digest against calculated digest and verify signature:
+
+        try:
+            if isinstance(pub, RSAPublicKey):
+                if sig_alg in [tpm2_objects.TPM_ALG_RSASSA, tpm2_objects.TPM_ALG_RSAPSS]:
+                    (signature,) = struct.unpack_from(f"{sig_size}s", sig, 6)
+                    tpm_util.verify(pub, signature, digest, hashfunc, sig_alg, hashfunc.digest_size)
+                else:
+                    raise ValueError(f"Unsupported quote signature algorithm '{sig_alg:#x}' for RSA keys")
+
+            if isinstance(pub, EllipticCurvePublicKey):
+                if sig_alg in [tpm2_objects.TPM_ALG_ECDSA]:
+                    der_sig = tpm_util.ecdsa_der_from_tpm(sig)
+                    tpm_util.verify(pub, der_sig, digest, hashfunc)
+                else:
+                    raise ValueError(f"Unsupported quote signature algorithm '{sig_alg:#x}' for EC keys")
+            
+        except InvalidSignature:
+            raise IncorrectSignature(
+                "signature does not verify, using the RSA key given, against the provided TPM object and"
+                "qualifying data, hashed using {hashfunc}"
+            )
+            
+        return True
 
     @staticmethod
     def verify_aik_with_iak(uuid: str, aik_tpm: bytes, iak_tpm: bytes, iak_attest: bytes, iak_sign: bytes) -> bool:
@@ -207,46 +278,10 @@ class Tpm:
             logger.debug("IMA measurement list of agent %s validated", agentAttestState.get_agent_id())
         return failure
 
-    def check_pcrs(
-        self,
-        agentAttestState: AgentAttestState,
-        tpm_policy: Union[str, Dict[str, Any]],
-        pcrs_dict: Dict[int, str],
-        data: str,
-        ima_measurement_list: Optional[str],
-        runtime_policy: Optional[RuntimePolicyType],
-        ima_keyrings: Optional[ImaKeyrings],
-        mb_measurement_list: Optional[str],
-        mb_policy: Optional[str],
-        hash_alg: Hash,
-        count: int,
-    ) -> Failure:
-        failure = Failure(Component.PCR_VALIDATION)
-
+    def _check_data_pcr(self, agentAttestState, pcrs_dict, data, hash_alg, failure, pcrs_in_quote):
         agent_id = agentAttestState.get_agent_id()
-
-        if isinstance(tpm_policy, str):
-            tpm_policy_dict = json.loads(tpm_policy)
-        else:
-            tpm_policy_dict = tpm_policy
-
-        pcr_allowlist = tpm_policy_dict.copy()
-
-        if "mask" in pcr_allowlist:
-            del pcr_allowlist["mask"]
-        # convert all pcr num keys to integers
-        pcr_allowlist = {int(k): v for k, v in list(pcr_allowlist.items())}
-
-        mb_pcrs_hashes, boot_aggregates, mb_measurement_data, mb_failure = mba.bootlog_parse(
-            mb_measurement_list, hash_alg
-        )
-        failure.merge(mb_failure)
-
-        pcrs_in_quote: Set[int] = set()  # PCRs in quote that were already used for some kind of validation
-
         pcr_nums = set(pcrs_dict.keys())
 
-        # Validate data PCR
         if config.TPM_DATA_PCR in pcr_nums and data is not None:
             expectedval = self.sim_extend(data, hash_alg)
             if expectedval != pcrs_dict[config.TPM_DATA_PCR]:
@@ -274,6 +309,51 @@ class Tpm:
                 f"Data PCR {config.TPM_DATA_PCR} is missing in quote, but is required",
                 True,
             )
+
+    def check_pcrs(
+        self,
+        agentAttestState: AgentAttestState,
+        tpm_policy: Union[str, Dict[str, Any]],
+        pcrs_dict: Dict[int, str],
+        data: Optional[str],
+        ima_measurement_list: Optional[str],
+        runtime_policy: Optional[RuntimePolicyType],
+        ima_keyrings: Optional[ImaKeyrings],
+        mb_measurement_list: Optional[str],
+        mb_policy: Optional[str],
+        hash_alg: Hash,
+        count: int,
+    ) -> Failure:
+        failure = Failure(Component.PCR_VALIDATION)
+
+        agent_id = agentAttestState.get_agent_id()
+
+        if isinstance(tpm_policy, str):
+            tpm_policy_dict = json.loads(tpm_policy)
+        else:
+            tpm_policy_dict = tpm_policy
+
+        pcr_allowlist = tpm_policy_dict.copy()
+
+        if "mask" in pcr_allowlist:
+            del pcr_allowlist["mask"]
+        # convert all pcr num keys to integers
+        pcr_allowlist = {int(k): v for k, v in list(pcr_allowlist.items())}
+
+        mb_pcrs_hashes, boot_aggregates, mb_measurement_data, mb_failure = mba.bootlog_parse(
+            mb_measurement_list, hash_alg
+        )
+
+        failure.merge(mb_failure)
+
+        pcrs_in_quote: Set[int] = set()  # PCRs in quote that were already used for some kind of validation
+
+        pcr_nums = set(pcrs_dict.keys())
+
+        # If additional data is provided, check its presence in the data PCR (defined by config.TPM_DATA_PCR)
+        if data is None:
+            self._check_data_pcr(agentAttestState, pcrs_dict, data, hash_alg, failure, pcrs_in_quote)
+
         # Check for ima PCR
         if config.IMA_PCR in pcr_nums:
             if ima_measurement_list is None:
@@ -424,8 +504,8 @@ class Tpm:
     def check_quote(
         self,
         agentAttestState: AgentAttestState,
-        nonce: str,
-        data: str,
+        nonce: bytes,
+        data: Optional[str],
         quote: str,
         aikTpmFromRegistrar: str,
         tpm_policy: Optional[Union[str, Dict[str, Any]]] = None,
@@ -530,6 +610,13 @@ class Tpm:
             current_clockinfo = tentative_current_clockinfo
 
         return None, current_clockinfo
+
+    @staticmethod
+    def get_pcrs_from_quote(quote, compressed):
+        _, sigblob, pcrblob = Tpm._get_quote_parameters(quote, compressed)
+        _, hash_alg, _ = struct.unpack_from(">HHH", sigblob, 0)
+        _, pcrs_dict = getattr(tpm_util, "__get_and_hash_pcrs")(pcrblob, hash_alg)
+        return pcrs_dict
 
     @staticmethod
     def sim_extend(hashval_1: str, hash_alg: Hash) -> str:

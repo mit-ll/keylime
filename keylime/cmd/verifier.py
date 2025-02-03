@@ -1,6 +1,12 @@
 from keylime import cloud_verifier_tornado, config, keylime_logging
 from keylime.common.migrations import apply
 from keylime.mba import mba
+import asyncio
+import tornado.process
+
+from keylime.web import VerifierServer
+from keylime.models import da_manager, db_manager
+
 
 logger = keylime_logging.init_logging("verifier")
 
@@ -12,7 +18,16 @@ def main() -> None:
 
     # Explicitly load and initialize measured boot components
     mba.load_imports()
-    cloud_verifier_tornado.main()
+
+    # Prepare to use the cloud_verifier database
+    db_manager.make_engine("cloud_verifier")
+    # Prepare backend for durable attestation, if configured
+    #da_manager.make_backend("cloud_verifier")
+
+    # Start HTTP server
+    server = VerifierServer(http_port=8880, https_port=8881)
+    # TODO: Check above line
+    server.start_multi()
 
 
 if __name__ == "__main__":
