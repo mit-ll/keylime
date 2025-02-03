@@ -7,6 +7,6 @@ Design of Keylime
    :caption: Contents:
 
    design/overview.rst
-   design/threat_model.rst
+   design/security.rst
 
 
