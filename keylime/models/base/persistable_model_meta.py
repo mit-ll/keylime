@@ -1,5 +1,5 @@
 import re
-from typing import Any, Optional, Pattern
+from typing import Any, Optional, Pattern, TypeAlias
 
 from sqlalchemy import Column, ForeignKey, Integer, Table, Text
 from sqlalchemy.dialects.mysql import LONGTEXT
@@ -52,6 +52,8 @@ class PersistableModelMeta(BasicModelMeta):
 
     # pylint: disable=using-constant-test, no-value-for-parameter, unused-private-member, unsupported-membership-test, no-else-return
 
+    DeclaredFieldType: TypeAlias = BasicModelMeta.DeclaredFieldType
+
     TABLE_NAME_REGEX: Pattern = re.compile(r"^[A-Za-z_]+[A-Za-z0-9_]*$")
 
     @staticmethod
@@ -82,19 +84,18 @@ class PersistableModelMeta(BasicModelMeta):
         return relationship(association.other_model.db_mapping, back_populates=association.inverse_of, lazy=lazy)
 
     @classmethod
-    def _make_field(
-        mcs,  # type: ignore[reportSelfClassParameterName]
-        cls: "BasicModelMeta",
-        name: str,
-        data_type: BasicModelMeta.DeclaredFieldType,
-        nullable: bool = False,
-        primary_key: bool = False,
-        column_args: tuple[Any, ...] = (),
-    ) -> ModelField:
+    def _make_field(mcs, cls: "BasicModelMeta", name: str, data_type: DeclaredFieldType, **opts) -> ModelField:  # type: ignore[reportSelfClassParameterName]
         if not mcs._is_implementation(cls):
             raise TypeError(f"cannot create model field '{name}' on abstract class '{cls.__name__}'")
 
-        if primary_key and "_id" in cls.schema_helpers_used:
+        nullable = opts.get("nullable", False)
+        primary_key = opts.get("primary_key", False)
+        column_args = opts.get("column_args", ())
+
+        if not isinstance(column_args, tuple):
+            column_args = (column_args,)
+
+        if primary_key and "_id" in [name for (name, _, _) in cls.schema_helpers_used]:
             raise SchemaInvalid(
                 f"cannot create primary key using field '{name}' for model '{cls.__name__}' which already has a "
                 f"single-field primary key defined using the 'cls._id(...)' schema helper"
@@ -103,13 +104,12 @@ class PersistableModelMeta(BasicModelMeta):
         if primary_key:
             mcs._getattr(cls, "__primary_key").append(name)
 
-        if not isinstance(column_args, tuple):
-            column_args = (column_args,)
+        field = super()._make_field(cls, name, data_type, **opts)
 
-        field = super()._make_field(cls, name, data_type, nullable)
-        db_type = field.data_type.get_db_type(db_manager.engine.dialect)
-        db_columns = mcs._getattr(cls, "__db_columns")
-        db_columns.append(Column(name, db_type, *column_args, nullable=nullable, primary_key=primary_key))
+        if field.persist:
+            db_type = field.data_type.get_db_type(db_manager.engine.dialect)
+            db_columns = mcs._getattr(cls, "__db_columns")
+            db_columns.append(Column(name, db_type, *column_args, nullable=nullable, primary_key=primary_key))
 
         return field
 
@@ -137,9 +137,9 @@ class PersistableModelMeta(BasicModelMeta):
             raise SchemaInvalid(f"'{table_name}' is an invalid name for a table")
 
         type(cls)._setattr(cls, "__table_name", table_name)
-        type(cls)._log_schema_helper_use(cls, "_persist_as")
+        type(cls)._log_schema_helper_use(cls, "_persist_as", table_name)
 
-    def _id(cls, name: str, data_type: BasicModelMeta.DeclaredFieldType = Integer) -> None:
+    def _id(cls, name: str, data_type: DeclaredFieldType = Integer) -> None:
         if not cls.schema_helpers_enabled:
             return
 
@@ -150,11 +150,9 @@ class PersistableModelMeta(BasicModelMeta):
             )
 
         type(cls)._make_field(cls, name, data_type, primary_key=True)
-        type(cls)._log_schema_helper_use(cls, "_id")
+        type(cls)._log_schema_helper_use(cls, "_id", name, data_type)
 
-    def _field(
-        cls, name: str, data_type: BasicModelMeta.DeclaredFieldType, nullable: bool = False, primary_key: bool = False
-    ) -> None:
+    def _field(cls, name: str, data_type: DeclaredFieldType, nullable: bool = False, primary_key: bool = False) -> None:
         if not cls.schema_helpers_enabled:
             return
 
@@ -162,8 +160,8 @@ class PersistableModelMeta(BasicModelMeta):
             data_type = data_type.with_variant(LONGTEXT, "mysql")  # type: ignore[arg-type]
             data_type = data_type.with_variant(LONGTEXT, "mariadb")  # type: ignore[arg-type]
 
-        type(cls)._make_field(cls, name, data_type, nullable, primary_key)
-        type(cls)._log_schema_helper_use(cls, "_field")
+        type(cls)._make_field(cls, name, data_type, nullable=nullable, primary_key=primary_key)
+        type(cls)._log_schema_helper_use(cls, "_field", name, data_type, nullable=nullable, primary_key=primary_key)
 
     def _has_one(cls, name: str, *args: Any, **kwargs: Any) -> None:
         if not cls.schema_helpers_enabled:
@@ -173,7 +171,7 @@ class PersistableModelMeta(BasicModelMeta):
         association = HasOneAssociation(*args, **kwargs)
 
         type(cls)._add_association(cls, association)
-        type(cls)._log_schema_helper_use(cls, "_has_one")
+        type(cls)._log_schema_helper_use(cls, "_has_one", name, *args, **kwargs)
 
     def _has_many(cls, name: str, *args: Any, **kwargs: Any) -> None:
         if not cls.schema_helpers_enabled:
@@ -183,7 +181,7 @@ class PersistableModelMeta(BasicModelMeta):
         association = HasManyAssociation(*args, **kwargs)
 
         type(cls)._add_association(cls, association)
-        type(cls)._log_schema_helper_use(cls, "_has_many")
+        type(cls)._log_schema_helper_use(cls, "_has_many", name, *args, **kwargs)
 
     def _belongs_to(cls, name: str, *args: Any, primary_key: bool = False, **kwargs: Any) -> None:
         if not cls.schema_helpers_enabled:
@@ -197,7 +195,7 @@ class PersistableModelMeta(BasicModelMeta):
         # Get the name of the field to be used as the foreign key (usually "{association name}_id")
         foreign_key = association.foreign_key
 
-        if primary_key and "_id" in cls.schema_helpers_used:
+        if primary_key and "_id" in [name for (name, _, _) in cls.schema_helpers_used]:
             raise SchemaInvalid(
                 f"cannot create primary key using field '{foreign_key}' for model '{cls.__name__}' which already has a "
                 f"single-field primary key defined using the 'cls._id(...)' schema helper"
@@ -225,7 +223,7 @@ class PersistableModelMeta(BasicModelMeta):
         )
 
         type(cls)._add_association(cls, association)
-        type(cls)._log_schema_helper_use(cls, "_belongs_to")
+        type(cls)._log_schema_helper_use(cls, "_belongs_to", name, *args, primary_key=primary_key, **kwargs)
 
     def process_schema(cls) -> None:
         # If schema has already been processed, do not process again

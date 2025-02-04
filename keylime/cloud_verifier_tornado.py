@@ -203,6 +203,18 @@ def store_attestation_state(agentAttestState: AgentAttestState) -> None:
 
 
 class BaseHandler(tornado.web.RequestHandler):
+    def __init__(self, *args, **kwargs):
+        self._req_handler_override = kwargs.get("override")
+        del kwargs["override"]
+        super().__init__(*args, **kwargs)
+
+    @property
+    def req_handler(self):
+        if self._req_handler_override:
+            return self._req_handler_override
+        else:
+            return self
+
     def prepare(self) -> None:  # pylint: disable=W0235
         super().prepare()
 
@@ -240,19 +252,19 @@ class BaseHandler(tornado.web.RequestHandler):
 
 class MainHandler(tornado.web.RequestHandler):
     def head(self) -> None:
-        web_util.echo_json_response(self, 405, "Not Implemented: Use /agents/ interface instead")
+        web_util.echo_json_response(self.req_handler, 405, "Not Implemented: Use /agents/ interface instead")
 
     def get(self) -> None:
-        web_util.echo_json_response(self, 405, "Not Implemented: Use /agents/ interface instead")
+        web_util.echo_json_response(self.req_handler, 405, "Not Implemented: Use /agents/ interface instead")
 
     def delete(self) -> None:
-        web_util.echo_json_response(self, 405, "Not Implemented: Use /agents/ interface instead")
+        web_util.echo_json_response(self.req_handler, 405, "Not Implemented: Use /agents/ interface instead")
 
     def post(self) -> None:
-        web_util.echo_json_response(self, 405, "Not Implemented: Use /agents/ interface instead")
+        web_util.echo_json_response(self.req_handler, 405, "Not Implemented: Use /agents/ interface instead")
 
     def put(self) -> None:
-        web_util.echo_json_response(self, 405, "Not Implemented: Use /agents/ interface instead")
+        web_util.echo_json_response(self.req_handler, 405, "Not Implemented: Use /agents/ interface instead")
 
     def data_received(self, chunk: Any) -> None:
         raise NotImplementedError()
@@ -260,20 +272,20 @@ class MainHandler(tornado.web.RequestHandler):
 
 class VersionHandler(BaseHandler):
     def head(self) -> None:
-        web_util.echo_json_response(self, 405, "Not Implemented: Use GET interface instead")
+        web_util.echo_json_response(self.req_handler, 405, "Not Implemented: Use GET interface instead")
 
     def get(self) -> None:
         if self.request.uri is None:
-            web_util.echo_json_response(self, 400, "URI not specified")
+            web_util.echo_json_response(self.req_handler, 400, "URI not specified")
             return
 
         rest_params = web_util.get_restful_params(self.request.uri)
         if rest_params is None:
-            web_util.echo_json_response(self, 405, "Not Implemented")
+            web_util.echo_json_response(self.req_handler, 405, "Not Implemented")
             return
 
-        if "version" not in rest_params:
-            web_util.echo_json_response(self, 400, "URI not supported")
+        if "versions" not in rest_params and "version" not in rest_params:
+            web_util.echo_json_response(self.req_handler, 400, "URI not supported")
             logger.warning("GET returning 400 response. URI not supported: %s", self.request.path)
             return
 
@@ -282,16 +294,16 @@ class VersionHandler(BaseHandler):
             "supported_versions": keylime_api_version.all_versions(),
         }
 
-        web_util.echo_json_response(self, 200, "Success", version_info)
+        web_util.echo_json_response(self.req_handler, 200, "Success", version_info)
 
     def delete(self) -> None:
-        web_util.echo_json_response(self, 405, "Not Implemented: Use GET interface instead")
+        web_util.echo_json_response(self.req_handler, 405, "Not Implemented: Use GET interface instead")
 
     def post(self) -> None:
-        web_util.echo_json_response(self, 405, "Not Implemented: Use GET interface instead")
+        web_util.echo_json_response(self.req_handler, 405, "Not Implemented: Use GET interface instead")
 
     def put(self) -> None:
-        web_util.echo_json_response(self, 405, "Not Implemented: Use GET interface instead")
+        web_util.echo_json_response(self.req_handler, 405, "Not Implemented: Use GET interface instead")
 
     def data_received(self, chunk: Any) -> None:
         raise NotImplementedError()
@@ -300,19 +312,19 @@ class VersionHandler(BaseHandler):
 class AgentsHandler(BaseHandler):
     def __validate_input(self, method: str) -> Tuple[Optional[Dict[str, Union[str, None]]], Optional[str]]:
         if self.request.uri is None:
-            web_util.echo_json_response(self, 400, "URI not specified")
+            web_util.echo_json_response(self.req_handler, 400, "URI not specified")
             return None, None
 
         rest_params = web_util.get_restful_params(self.request.uri)
         if rest_params is None:
-            web_util.echo_json_response(self, 405, "Not Implemented: Use /agents/ interface")
+            web_util.echo_json_response(self.req_handler, 405, "Not Implemented: Use /agents/ interface")
             return None, None
 
         if not web_util.validate_api_version(self, cast(str, rest_params["api_version"]), logger):
             return None, None
 
         if "agents" not in rest_params:
-            web_util.echo_json_response(self, 400, "uri not supported")
+            web_util.echo_json_response(self.req_handler, 400, "uri not supported")
             if method != "DELETE":
                 logger.warning("%s returning 400 response. uri not supported: %s", method, self.request.path)
             return None, None
@@ -324,7 +336,7 @@ class AgentsHandler(BaseHandler):
             validate_agent_id = (agent_id is not None) and (agent_id != "")
         elif method in ["PUT", "DELETE"]:
             if agent_id is None:
-                web_util.echo_json_response(self, 400, "uri not supported")
+                web_util.echo_json_response(self.req_handler, 400, "uri not supported")
                 logger.warning("%s returning 400 response. uri not supported", method)
                 if method == "DELETE":
                     return None, None
@@ -335,7 +347,7 @@ class AgentsHandler(BaseHandler):
 
         # If the agent ID is not valid (wrong set of characters), just do nothing.
         if validate_agent_id and not validators.valid_agent_id(agent_id):
-            web_util.echo_json_response(self, 400, "agent_id not not valid")
+            web_util.echo_json_response(self.req_handler, 400, "agent_id not not valid")
             logger.error("%s received an invalid agent ID: %s", method, agent_id)
             return None, None
 
@@ -343,7 +355,7 @@ class AgentsHandler(BaseHandler):
 
     def head(self) -> None:
         """HEAD not supported"""
-        web_util.echo_json_response(self, 405, "HEAD not supported")
+        web_util.echo_json_response(self.req_handler, 405, "HEAD not supported")
 
     def get(self) -> None:
         """This method handles the GET requests to retrieve status on agents from the Cloud Verifier.
@@ -383,9 +395,9 @@ class AgentsHandler(BaseHandler):
 
             if agent is not None:
                 response = cloud_verifier_common.process_get_status(agent)
-                web_util.echo_json_response(self, 200, "Success", response)
+                web_util.echo_json_response(self.req_handler, 200, "Success", response)
             else:
-                web_util.echo_json_response(self, 404, "agent id not found")
+                web_util.echo_json_response(self.req_handler, 404, "agent id not found")
         else:
             json_response = None
             if "bulk" in rest_params:
@@ -423,7 +435,7 @@ class AgentsHandler(BaseHandler):
                 for agent in agent_list:
                     json_response[agent.agent_id] = cloud_verifier_common.process_get_status(agent)
 
-                web_util.echo_json_response(self, 200, "Success", json_response)
+                web_util.echo_json_response(self.req_handler, 200, "Success", json_response)
             else:
                 if ("verifier" in rest_params) and (rest_params["verifier"] != ""):
                     json_response_list = (
@@ -432,7 +444,7 @@ class AgentsHandler(BaseHandler):
                 else:
                     json_response_list = session.query(VerfierMain.agent_id).all()
 
-                web_util.echo_json_response(self, 200, "Success", {"uuids": json_response_list})
+                web_util.echo_json_response(self.req_handler, 200, "Success", {"uuids": json_response_list})
 
             logger.info("GET returning 200 response for agent_id list")
 
@@ -455,13 +467,13 @@ class AgentsHandler(BaseHandler):
             logger.error("SQLAlchemy Error for agent ID %s: %s", agent_id, e)
 
         if agent is None:
-            web_util.echo_json_response(self, 404, "agent id not found")
+            web_util.echo_json_response(self.req_handler, 404, "agent id not found")
             logger.info("DELETE returning 404 response. agent id: %s not found.", agent_id)
             return
 
         verifier_id = config.get("verifier", "uuid", fallback=cloud_verifier_common.DEFAULT_VERIFIER_ID)
         if verifier_id != agent.verifier_id:
-            web_util.echo_json_response(self, 404, "agent id associated to this verifier")
+            web_util.echo_json_response(self.req_handler, 404, "agent id associated to this verifier")
             logger.info("DELETE returning 404 response. agent id: %s not associated to this verifer.", agent_id)
             return
 
@@ -479,7 +491,7 @@ class AgentsHandler(BaseHandler):
                 verifier_db_delete_agent(session, agent_id)
             except SQLAlchemyError as e:
                 logger.error("SQLAlchemy Error: %s", e)
-            web_util.echo_json_response(self, 200, "Success")
+            web_util.echo_json_response(self.req_handler, 200, "Success")
             logger.info("DELETE returning 200 response for agent id: %s", agent_id)
         else:
             try:
@@ -491,7 +503,7 @@ class AgentsHandler(BaseHandler):
                 except SQLAlchemyError as e:
                     logger.error("SQLAlchemy Error for agent ID %s: %s", agent_id, e)
                 session.commit()
-                web_util.echo_json_response(self, 202, "Accepted")
+                web_util.echo_json_response(self.req_handler, 202, "Accepted")
                 logger.info("DELETE returning 202 response for agent id: %s", agent_id)
             except SQLAlchemyError as e:
                 logger.error("SQLAlchemy Error for agent ID %s: %s", agent_id, e)
@@ -513,7 +525,7 @@ class AgentsHandler(BaseHandler):
             if agent_id is not None:
                 content_length = len(self.request.body)
                 if content_length == 0:
-                    web_util.echo_json_response(self, 400, "Expected non zero content length")
+                    web_util.echo_json_response(self.req_handler, 400, "Expected non zero content length")
                     logger.warning("POST returning 400 response. Expected non zero content length.")
                 else:
                     json_body = json.loads(self.request.body)
@@ -570,7 +582,7 @@ class AgentsHandler(BaseHandler):
                             (agent_data["mtls_cert"] is None or agent_data["mtls_cert"] == "disabled"),
                         ]
                     ):
-                        web_util.echo_json_response(self, 400, "mTLS certificate for agent is required!")
+                        web_util.echo_json_response(self.req_handler, 400, "mTLS certificate for agent is required!")
                         return
 
                     # Handle runtime policies
@@ -597,7 +609,7 @@ class AgentsHandler(BaseHandler):
                         # Prevent overwriting existing IMA policies with name provided in request
                         if runtime_policy and runtime_policy_stored:
                             web_util.echo_json_response(
-                                self,
+                                self.req_handler,
                                 409,
                                 f"IMA policy with name {runtime_policy_name} already exists. Please use a different name or delete the allowlist from the verifier.",
                             )
@@ -607,7 +619,7 @@ class AgentsHandler(BaseHandler):
                         # Return an error code if the named allowlist does not exist in the database
                         if not runtime_policy and not runtime_policy_stored:
                             web_util.echo_json_response(
-                                self, 404, f"Could not find IMA policy with name {runtime_policy_name}!"
+                                self.req_handler, 404, f"Could not find IMA policy with name {runtime_policy_name}!"
                             )
                             logger.warning("Could not find IMA policy with name %s", runtime_policy_name)
                             return
@@ -621,7 +633,7 @@ class AgentsHandler(BaseHandler):
 
                     if new_agent_count > 0:
                         web_util.echo_json_response(
-                            self,
+                            self.req_handler,
                             409,
                             f"Agent of uuid {agent_id} already exists. Please use delete or update.",
                         )
@@ -648,7 +660,7 @@ class AgentsHandler(BaseHandler):
                                 ),
                             )
                         except ima.ImaValidationError as e:
-                            web_util.echo_json_response(self, e.code, e.message)
+                            web_util.echo_json_response(self.req_handler, e.code, e.message)
                             logger.warning(e.message)
                             return
 
@@ -661,7 +673,7 @@ class AgentsHandler(BaseHandler):
                             )
                         except ima.ImaValidationError as e:
                             message = f"Runtime policy is malformatted: {e.message}"
-                            web_util.echo_json_response(self, e.code, message)
+                            web_util.echo_json_response(self.req_handler, e.code, message)
                             logger.warning(message)
                             return
 
@@ -704,7 +716,7 @@ class AgentsHandler(BaseHandler):
                         # Prevent overwriting existing mb_policy with name provided in request
                         if mb_policy and mb_policy_stored:
                             web_util.echo_json_response(
-                                self,
+                                self.req_handler,
                                 409,
                                 f"mb_policy with name {mb_policy_name} already exists. Please use a different name or delete the mb_policy from the verifier.",
                             )
@@ -714,7 +726,7 @@ class AgentsHandler(BaseHandler):
                         # Return error if the mb_policy is neither provided nor stored.
                         if not mb_policy and not mb_policy_stored:
                             web_util.echo_json_response(
-                                self, 404, f"Could not find mb_policy with name {mb_policy_name}!"
+                                self.req_handler, 404, f"Could not find mb_policy with name {mb_policy_name}!"
                             )
                             logger.warning("Could not find mb_policy with name %s", mb_policy_name)
                             return
@@ -733,7 +745,7 @@ class AgentsHandler(BaseHandler):
                         # Prevent overwriting existing mb_policy
                         if mb_policy and mb_policy_stored:
                             web_util.echo_json_response(
-                                self,
+                                self.req_handler,
                                 409,
                                 f"mb_policy with name {mb_policy_name} already exists. You can delete the mb_policy from the verifier.",
                             )
@@ -778,13 +790,13 @@ class AgentsHandler(BaseHandler):
                         logger.warning("Connecting to agent without mTLS: %s", agent_id)
 
                     asyncio.ensure_future(process_agent(agent_data, states.GET_QUOTE))
-                    web_util.echo_json_response(self, 200, "Success")
+                    web_util.echo_json_response(self.req_handler, 200, "Success")
                     logger.info("POST returning 200 response for adding agent id: %s", agent_id)
             else:
-                web_util.echo_json_response(self, 400, "uri not supported")
+                web_util.echo_json_response(self.req_handler, 400, "uri not supported")
                 logger.warning("POST returning 400 response. uri not supported")
         except Exception as e:
-            web_util.echo_json_response(self, 400, f"Exception error: {str(e)}")
+            web_util.echo_json_response(self.req_handler, 400, f"Exception error: {str(e)}")
             logger.warning("POST returning 400 response. Exception error: %s", e)
             logger.exception(e)
 
@@ -808,7 +820,7 @@ class AgentsHandler(BaseHandler):
                 raise e
 
             if db_agent is None:
-                web_util.echo_json_response(self, 404, "agent id not found")
+                web_util.echo_json_response(self.req_handler, 404, "agent id not found")
                 logger.info("PUT returning 404 response. agent id: %s not found.", agent_id)
                 return
 
@@ -824,7 +836,7 @@ class AgentsHandler(BaseHandler):
 
                 agent["operational_state"] = states.START
                 asyncio.ensure_future(process_agent(agent, states.GET_QUOTE))
-                web_util.echo_json_response(self, 200, "Success")
+                web_util.echo_json_response(self.req_handler, 200, "Success")
                 logger.info("PUT returning 200 response for agent id: %s", agent_id)
             elif "stop" in rest_params:
                 # do stuff for terminate
@@ -837,14 +849,14 @@ class AgentsHandler(BaseHandler):
                 except SQLAlchemyError as e:
                     logger.error("SQLAlchemy Error: %s", e)
 
-                web_util.echo_json_response(self, 200, "Success")
+                web_util.echo_json_response(self.req_handler, 200, "Success")
                 logger.info("PUT returning 200 response for agent id: %s", agent_id)
             else:
-                web_util.echo_json_response(self, 400, "uri not supported")
+                web_util.echo_json_response(self.req_handler, 400, "uri not supported")
                 logger.warning("PUT returning 400 response. uri not supported")
 
         except Exception as e:
-            web_util.echo_json_response(self, 400, f"Exception error: {str(e)}")
+            web_util.echo_json_response(self.req_handler, 400, f"Exception error: {str(e)}")
             logger.warning("PUT returning 400 response. Exception error: %s", e)
             logger.exception(e)
 
@@ -854,16 +866,16 @@ class AgentsHandler(BaseHandler):
 
 class AllowlistHandler(BaseHandler):
     def head(self) -> None:
-        web_util.echo_json_response(self, 400, "Allowlist handler: HEAD Not Implemented")
+        web_util.echo_json_response(self.req_handler, 400, "Allowlist handler: HEAD Not Implemented")
 
     def __validate_input(self, method: str) -> Tuple[bool, Optional[str]]:
         """Validate the input"""
         if self.request.uri is None:
-            web_util.echo_json_response(self, 400, "Invalid URL")
+            web_util.echo_json_response(self.req_handler, 400, "Invalid URL")
             return False, None
         rest_params = web_util.get_restful_params(self.request.uri)
         if rest_params is None or "allowlists" not in rest_params:
-            web_util.echo_json_response(self, 400, "Invalid URL")
+            web_util.echo_json_response(self.req_handler, 400, "Invalid URL")
             return False, None
 
         if not web_util.validate_api_version(self, cast(str, rest_params["api_version"]), logger):
@@ -871,7 +883,7 @@ class AllowlistHandler(BaseHandler):
 
         runtime_policy_name = rest_params["allowlists"]
         if runtime_policy_name is None and method != "GET":
-            web_util.echo_json_response(self, 400, "Invalid URL")
+            web_util.echo_json_response(self.req_handler, 400, "Invalid URL")
             logger.warning("%s returning 400 response: %s", method, self.request.path)
             return False, None
 
@@ -893,30 +905,30 @@ class AllowlistHandler(BaseHandler):
                 names_allowlists = session.query(VerifierAllowlist.name).all()
             except SQLAlchemyError as e:
                 logger.error("SQLAlchemy Error: %s", e)
-                web_util.echo_json_response(self, 500, "Failed to get names of allowlists")
+                web_util.echo_json_response(self.req_handler, 500, "Failed to get names of allowlists")
                 raise
 
             names_response = []
             for name in names_allowlists:
                 names_response.append(name[0])
-            web_util.echo_json_response(self, 200, "Success", {"runtimepolicy names": names_response})
+            web_util.echo_json_response(self.req_handler, 200, "Success", {"runtimepolicy names": names_response})
 
         else:
             try:
                 allowlist = session.query(VerifierAllowlist).filter_by(name=allowlist_name).one()
             except NoResultFound:
-                web_util.echo_json_response(self, 404, f"Runtime policy {allowlist_name} not found")
+                web_util.echo_json_response(self.req_handler, 404, f"Runtime policy {allowlist_name} not found")
                 return
             except SQLAlchemyError as e:
                 logger.error("SQLAlchemy Error: %s", e)
-                web_util.echo_json_response(self, 500, "Failed to get allowlist")
+                web_util.echo_json_response(self.req_handler, 500, "Failed to get allowlist")
                 raise
 
             response = {}
             for field in ("name", "tpm_policy"):
                 response[field] = getattr(allowlist, field, None)
             response["runtime_policy"] = getattr(allowlist, "ima_policy", None)
-            web_util.echo_json_response(self, 200, "Success", response)
+            web_util.echo_json_response(self.req_handler, 200, "Success", response)
 
     def delete(self) -> None:
         """Delete an allowlist
@@ -932,11 +944,11 @@ class AllowlistHandler(BaseHandler):
         try:
             runtime_policy = session.query(VerifierAllowlist).filter_by(name=allowlist_name).one()
         except NoResultFound:
-            web_util.echo_json_response(self, 404, f"Runtime policy {allowlist_name} not found")
+            web_util.echo_json_response(self.req_handler, 404, f"Runtime policy {allowlist_name} not found")
             return
         except SQLAlchemyError as e:
             logger.error("SQLAlchemy Error: %s", e)
-            web_util.echo_json_response(self, 500, "Failed to get allowlist")
+            web_util.echo_json_response(self.req_handler, 500, "Failed to get allowlist")
             raise
 
         try:
@@ -946,7 +958,7 @@ class AllowlistHandler(BaseHandler):
             raise
         if agent is not None:
             web_util.echo_json_response(
-                self,
+                self.req_handler,
                 409,
                 f"Can't delete allowlist as it's currently in use by agent {agent.agent_id}",
             )
@@ -958,7 +970,7 @@ class AllowlistHandler(BaseHandler):
         except SQLAlchemyError as e:
             logger.error("SQLAlchemy Error: %s", e)
             session.close()
-            web_util.echo_json_response(self, 500, f"Database error: {e}")
+            web_util.echo_json_response(self.req_handler, 500, f"Database error: {e}")
             raise
 
         # NOTE(kaifeng) 204 Can not have response body, but current helper
@@ -972,7 +984,7 @@ class AllowlistHandler(BaseHandler):
         """Get the IMA policy from the request and return it in Db format"""
         content_length = len(self.request.body)
         if content_length == 0:
-            web_util.echo_json_response(self, 400, "Expected non zero content length")
+            web_util.echo_json_response(self.req_handler, 400, "Expected non zero content length")
             logger.warning("POST returning 400 response. Expected non zero content length.")
             return {}
 
@@ -991,7 +1003,7 @@ class AllowlistHandler(BaseHandler):
                 verify_sig=config.getboolean("verifier", "require_allow_list_signatures", fallback=False),
             )
         except ima.ImaValidationError as e:
-            web_util.echo_json_response(self, e.code, e.message)
+            web_util.echo_json_response(self.req_handler, e.code, e.message)
             logger.warning(e.message)
             return {}
 
@@ -1001,7 +1013,7 @@ class AllowlistHandler(BaseHandler):
             runtime_policy_db_format = ima.runtime_policy_db_contents(runtime_policy_name, runtime_policy, tpm_policy)
         except ima.ImaValidationError as e:
             message = f"Runtime policy is malformatted: {e.message}"
-            web_util.echo_json_response(self, e.code, message)
+            web_util.echo_json_response(self.req_handler, e.code, message)
             logger.warning(message)
             return {}
 
@@ -1015,10 +1027,14 @@ class AllowlistHandler(BaseHandler):
         """
 
         params_valid, runtime_policy_name = self.__validate_input("POST")
+        print("AllowlistHandler.post")
+        print(runtime_policy_name)
+        print(params_valid)
         if not params_valid or runtime_policy_name is None:
             return
 
         runtime_policy_db_format = self.__get_runtime_policy_db_format(runtime_policy_name)
+        print(runtime_policy_db_format)
         if not runtime_policy_db_format:
             return
 
@@ -1027,7 +1043,7 @@ class AllowlistHandler(BaseHandler):
         try:
             runtime_policy_count = session.query(VerifierAllowlist).filter_by(name=runtime_policy_name).count()
             if runtime_policy_count > 0:
-                web_util.echo_json_response(self, 409, f"Runtime policy with name {runtime_policy_name} already exists")
+                web_util.echo_json_response(self.req_handler, 409, f"Runtime policy with name {runtime_policy_name} already exists")
                 logger.warning("Runtime policy with name %s already exists", runtime_policy_name)
                 return
         except SQLAlchemyError as e:
@@ -1042,7 +1058,7 @@ class AllowlistHandler(BaseHandler):
             logger.error("SQLAlchemy Error: %s", e)
             raise
 
-        web_util.echo_json_response(self, 201)
+        web_util.echo_json_response(self.req_handler, 201)
         logger.info("POST returning 201")
 
     def put(self) -> None:
@@ -1066,7 +1082,7 @@ class AllowlistHandler(BaseHandler):
             runtime_policy_count = session.query(VerifierAllowlist).filter_by(name=runtime_policy_name).count()
             if runtime_policy_count != 1:
                 web_util.echo_json_response(
-                    self, 409, f"Runtime policy with name {runtime_policy_name} does not already exist"
+                    self.req_handler, 409, f"Runtime policy with name {runtime_policy_name} does not already exist"
                 )
                 logger.warning("Runtime policy with name %s does not already exist", runtime_policy_name)
                 return
@@ -1084,7 +1100,7 @@ class AllowlistHandler(BaseHandler):
             logger.error("SQLAlchemy Error: %s", e)
             raise
 
-        web_util.echo_json_response(self, 201)
+        web_util.echo_json_response(self.req_handler, 201)
         logger.info("PUT returning 201")
 
     def data_received(self, chunk: Any) -> None:
@@ -1094,19 +1110,19 @@ class AllowlistHandler(BaseHandler):
 class VerifyIdentityHandler(BaseHandler):
     def head(self) -> None:
         """HEAD not supported"""
-        web_util.echo_json_response(self, 405, "HEAD not supported")
+        web_util.echo_json_response(self.req_handler, 405, "HEAD not supported")
 
     def delete(self) -> None:
         """DELETE not supported"""
-        web_util.echo_json_response(self, 405, "DELETE not supported")
+        web_util.echo_json_response(self.req_handler, 405, "DELETE not supported")
 
     def post(self) -> None:
         """POST not supported"""
-        web_util.echo_json_response(self, 405, "POST not supported")
+        web_util.echo_json_response(self.req_handler, 405, "POST not supported")
 
     def put(self) -> None:
         """PUT not supported"""
-        web_util.echo_json_response(self, 405, "PUT not supported")
+        web_util.echo_json_response(self.req_handler, 405, "PUT not supported")
 
     def get(self) -> None:
         """This method handles the GET requests to verify an identity quote from an agent.
@@ -1117,44 +1133,44 @@ class VerifyIdentityHandler(BaseHandler):
 
         # validate the parameters of our request
         if self.request.uri is None:
-            web_util.echo_json_response(self, 400, "URI not specified")
+            web_util.echo_json_response(self.req_handler, 400, "URI not specified")
             return
 
         rest_params = web_util.get_restful_params(self.request.uri)
         if rest_params is None:
-            web_util.echo_json_response(self, 405, "Not Implemented: Use /verify/identity interface")
+            web_util.echo_json_response(self.req_handler, 405, "Not Implemented: Use /verify/identity interface")
             return
 
         if not web_util.validate_api_version(self, cast(str, rest_params["api_version"]), logger):
             return
 
         if "verify" not in rest_params and rest_params["verify"] != "identity":
-            web_util.echo_json_response(self, 400, "uri not supported")
+            web_util.echo_json_response(self.req_handler, 400, "uri not supported")
             logger.warning("GET returning 400 response. uri not supported: %s", self.request.path)
             return
 
         # make sure we have all of the necessary parameters: agent_uuid, quote and nonce
         agent_id = rest_params.get("agent_uuid")
         if agent_id is None or agent_id == "":
-            web_util.echo_json_response(self, 400, "missing query parameter 'agent_uuid'")
+            web_util.echo_json_response(self.req_handler, 400, "missing query parameter 'agent_uuid'")
             logger.warning("GET returning 400 response. missing query parameter 'agent_uuid'")
             return
 
         quote = rest_params.get("quote")
         if quote is None or quote == "":
-            web_util.echo_json_response(self, 400, "missing query parameter 'quote'")
+            web_util.echo_json_response(self.req_handler, 400, "missing query parameter 'quote'")
             logger.warning("GET returning 400 response. missing query parameter 'quote'")
             return
 
         nonce = rest_params.get("nonce")
         if nonce is None or nonce == "":
-            web_util.echo_json_response(self, 400, "missing query parameter 'nonce'")
+            web_util.echo_json_response(self.req_handler, 400, "missing query parameter 'nonce'")
             logger.warning("GET returning 400 response. missing query parameter 'nonce'")
             return
 
         hash_alg = rest_params.get("hash_alg")
         if hash_alg is None or hash_alg == "":
-            web_util.echo_json_response(self, 400, "missing query parameter 'hash_alg'")
+            web_util.echo_json_response(self.req_handler, 400, "missing query parameter 'hash_alg'")
             logger.warning("GET returning 400 response. missing query parameter 'hash_alg'")
             return
 
@@ -1181,13 +1197,13 @@ class VerifyIdentityHandler(BaseHandler):
             )
             if failure:
                 failure_contexts = "; ".join(x.context for x in failure.events)
-                web_util.echo_json_response(self, 200, "Success", {"valid": 0, "reason": failure_contexts})
+                web_util.echo_json_response(self.req_handler, 200, "Success", {"valid": 0, "reason": failure_contexts})
                 logger.info("GET returning 200, but validation failed")
             else:
-                web_util.echo_json_response(self, 200, "Success", {"valid": 1})
+                web_util.echo_json_response(self.req_handler, 200, "Success", {"valid": 1})
                 logger.info("GET returning 200, validation successful")
         else:
-            web_util.echo_json_response(self, 404, "agent id not found")
+            web_util.echo_json_response(self.req_handler, 404, "agent id not found")
             logger.info("GET returning 404, agaent not found")
 
     def data_received(self, chunk: Any) -> None:
@@ -1196,17 +1212,17 @@ class VerifyIdentityHandler(BaseHandler):
 
 class MbpolicyHandler(BaseHandler):
     def head(self) -> None:
-        web_util.echo_json_response(self, 400, "Mbpolicy handler: HEAD Not Implemented")
+        web_util.echo_json_response(self.req_handler, 400, "Mbpolicy handler: HEAD Not Implemented")
 
     def __validate_input(self, method: str) -> Tuple[bool, Optional[str]]:
         """Validate the input"""
 
         if self.request.uri is None:
-            web_util.echo_json_response(self, 400, "Invalid URL")
+            web_util.echo_json_response(self.req_handler, 400, "Invalid URL")
             return False, None
         rest_params = web_util.get_restful_params(self.request.uri)
         if rest_params is None or "mbpolicies" not in rest_params:
-            web_util.echo_json_response(self, 400, "Invalid URL")
+            web_util.echo_json_response(self.req_handler, 400, "Invalid URL")
             return False, None
 
         if not web_util.validate_api_version(self, cast(str, rest_params["api_version"]), logger):
@@ -1214,7 +1230,7 @@ class MbpolicyHandler(BaseHandler):
 
         mb_policy_name = rest_params["mbpolicies"]
         if mb_policy_name is None and method != "GET":
-            web_util.echo_json_response(self, 400, "Invalid URL")
+            web_util.echo_json_response(self.req_handler, 400, "Invalid URL")
             logger.warning("%s returning 400 response: %s", method, self.request.path)
             return False, None
 
@@ -1237,29 +1253,29 @@ class MbpolicyHandler(BaseHandler):
                 names_mbpolicies = session.query(VerifierMbpolicy.name).all()
             except SQLAlchemyError as e:
                 logger.error("SQLAlchemy Error: %s", e)
-                web_util.echo_json_response(self, 500, "Failed to get names of mbpolicies")
+                web_util.echo_json_response(self.req_handler, 500, "Failed to get names of mbpolicies")
                 raise
 
             names_response = []
             for name in names_mbpolicies:
                 names_response.append(name[0])
-            web_util.echo_json_response(self, 200, "Success", {"mbpolicy names": names_response})
+            web_util.echo_json_response(self.req_handler, 200, "Success", {"mbpolicy names": names_response})
 
         else:
             try:
                 mbpolicy = session.query(VerifierMbpolicy).filter_by(name=mb_policy_name).one()
             except NoResultFound:
-                web_util.echo_json_response(self, 404, f"Measured boot policy {mb_policy_name} not found")
+                web_util.echo_json_response(self.req_handler, 404, f"Measured boot policy {mb_policy_name} not found")
                 return
             except SQLAlchemyError as e:
                 logger.error("SQLAlchemy Error: %s", e)
-                web_util.echo_json_response(self, 500, "Failed to get mb_policy")
+                web_util.echo_json_response(self.req_handler, 500, "Failed to get mb_policy")
                 raise
 
             response = {}
             response["name"] = getattr(mbpolicy, "name", None)
             response["mb_policy"] = getattr(mbpolicy, "mb_policy", None)
-            web_util.echo_json_response(self, 200, "Success", response)
+            web_util.echo_json_response(self.req_handler, 200, "Success", response)
 
     def delete(self) -> None:
         """Delete a mb_policy
@@ -1275,11 +1291,11 @@ class MbpolicyHandler(BaseHandler):
         try:
             mbpolicy = session.query(VerifierMbpolicy).filter_by(name=mb_policy_name).one()
         except NoResultFound:
-            web_util.echo_json_response(self, 404, f"Measured boot policy {mb_policy_name} not found")
+            web_util.echo_json_response(self.req_handler, 404, f"Measured boot policy {mb_policy_name} not found")
             return
         except SQLAlchemyError as e:
             logger.error("SQLAlchemy Error: %s", e)
-            web_util.echo_json_response(self, 500, "Failed to get mb_policy")
+            web_util.echo_json_response(self.req_handler, 500, "Failed to get mb_policy")
             raise
 
         try:
@@ -1289,7 +1305,7 @@ class MbpolicyHandler(BaseHandler):
             raise
         if agent is not None:
             web_util.echo_json_response(
-                self,
+                self.req_handler,
                 409,
                 f"Can't delete mb_policy as it's currently in use by agent {agent.agent_id}",
             )
@@ -1301,7 +1317,7 @@ class MbpolicyHandler(BaseHandler):
         except SQLAlchemyError as e:
             logger.error("SQLAlchemy Error: %s", e)
             session.close()
-            web_util.echo_json_response(self, 500, f"Database error: {e}")
+            web_util.echo_json_response(self.req_handler, 500, f"Database error: {e}")
             raise
 
         # NOTE(kaifeng) 204 Can not have response body, but current helper
@@ -1316,7 +1332,7 @@ class MbpolicyHandler(BaseHandler):
 
         content_length = len(self.request.body)
         if content_length == 0:
-            web_util.echo_json_response(self, 400, "Expected non zero content length")
+            web_util.echo_json_response(self.req_handler, 400, "Expected non zero content length")
             logger.warning("POST returning 400 response. Expected non zero content length.")
             return {}
 
@@ -1347,7 +1363,7 @@ class MbpolicyHandler(BaseHandler):
             mbpolicy_count = session.query(VerifierMbpolicy).filter_by(name=mb_policy_name).count()
             if mbpolicy_count > 0:
                 web_util.echo_json_response(
-                    self, 409, f"Measured boot policy with name {mb_policy_name} already exists"
+                    self.req_handler, 409, f"Measured boot policy with name {mb_policy_name} already exists"
                 )
                 logger.warning("Measured boot policy with name %s already exists", mb_policy_name)
                 return
@@ -1363,7 +1379,7 @@ class MbpolicyHandler(BaseHandler):
             logger.error("SQLAlchemy Error: %s", e)
             raise
 
-        web_util.echo_json_response(self, 201)
+        web_util.echo_json_response(self.req_handler, 201)
         logger.info("POST returning 201")
 
     def put(self) -> None:
@@ -1387,7 +1403,7 @@ class MbpolicyHandler(BaseHandler):
             mbpolicy_count = session.query(VerifierMbpolicy).filter_by(name=mb_policy_name).count()
             if mbpolicy_count != 1:
                 web_util.echo_json_response(
-                    self, 409, f"Measured boot policy with name {mb_policy_name} does not already exist"
+                    self.req_handler, 409, f"Measured boot policy with name {mb_policy_name} does not already exist"
                 )
                 logger.warning("Measured boot policy with name %s does not already exist", mb_policy_name)
                 return
@@ -1405,7 +1421,7 @@ class MbpolicyHandler(BaseHandler):
             logger.error("SQLAlchemy Error: %s", e)
             raise
 
-        web_util.echo_json_response(self, 201)
+        web_util.echo_json_response(self.req_handler, 201)
         logger.info("PUT returning 201")
 
     def data_received(self, chunk: Any) -> None:

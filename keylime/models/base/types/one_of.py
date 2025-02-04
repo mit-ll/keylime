@@ -95,8 +95,12 @@ class OneOf(ModelType):
                     return item.cast(value)
                 except Exception:
                     continue
+            elif isinstance(value, str) and isinstance(item, str) and value.casefold() == item.casefold():
+                return item
             elif value == item:
                 return value
+            else:
+                continue
 
         raise TypeError("value is not allowable by 'OneOf' definition")
 
@@ -104,6 +108,9 @@ class OneOf(ModelType):
         return "is not a permitted value"
 
     def render(self, value: Any) -> Any:
+        if value is None or value == "":
+            return None
+
         for item in self._permitted:
             if isinstance(item, ModelType):
                 try:
@@ -128,7 +135,7 @@ class OneOf(ModelType):
             elif value == item:
                 return value
             else:
-                break
+                continue
 
         raise TypeError("value is not allowable by 'OneOf' definition")
 
@@ -142,10 +149,12 @@ class OneOf(ModelType):
                     return item.db_load(value, dialect)
                 except Exception:
                     continue
+            elif isinstance(value, str) and isinstance(item, str) and value.casefold() == item.casefold():
+                return item
             elif value == item:
                 return value
             else:
-                break
+                continue
 
         raise TypeError("value is not allowable by 'OneOf' definition")
 
@@ -163,12 +172,14 @@ class OneOf(ModelType):
             for cls in reversed(mro):
                 counter[cls] += 1
 
-        highest_count = next(iter(counter.values()))
         lca = None
 
-        for cls, count in counter.items():
-            if count == highest_count:
-                lca = cls
+        if len(counter) > 0:
+            highest_count = next(iter(counter.values()))
+
+            for cls, count in counter.items():
+                if count == highest_count:
+                    lca = cls
 
         return lca
 
@@ -207,7 +218,7 @@ class OneOf(ModelType):
             elif value == item:
                 return value
             else:
-                break
+                continue
 
         raise TypeError("value is not allowable by 'OneOf' definition")
 
@@ -221,10 +232,12 @@ class OneOf(ModelType):
                     return item.da_load(value)
                 except Exception:
                     continue
+            elif isinstance(value, str) and isinstance(item, str) and value.casefold() == item.casefold():
+                return item
             elif value == item:
                 return value
             else:
-                break
+                continue
 
         raise TypeError("value is not allowable by 'OneOf' definition")
 

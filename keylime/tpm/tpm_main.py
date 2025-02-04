@@ -207,46 +207,10 @@ class Tpm:
             logger.debug("IMA measurement list of agent %s validated", agentAttestState.get_agent_id())
         return failure
 
-    def check_pcrs(
-        self,
-        agentAttestState: AgentAttestState,
-        tpm_policy: Union[str, Dict[str, Any]],
-        pcrs_dict: Dict[int, str],
-        data: str,
-        ima_measurement_list: Optional[str],
-        runtime_policy: Optional[RuntimePolicyType],
-        ima_keyrings: Optional[ImaKeyrings],
-        mb_measurement_list: Optional[str],
-        mb_policy: Optional[str],
-        hash_alg: Hash,
-        count: int,
-    ) -> Failure:
-        failure = Failure(Component.PCR_VALIDATION)
-
+    def _check_data_pcr(self, agentAttestState, pcrs_dict, data, hash_alg, failure, pcrs_in_quote):
         agent_id = agentAttestState.get_agent_id()
-
-        if isinstance(tpm_policy, str):
-            tpm_policy_dict = json.loads(tpm_policy)
-        else:
-            tpm_policy_dict = tpm_policy
-
-        pcr_allowlist = tpm_policy_dict.copy()
-
-        if "mask" in pcr_allowlist:
-            del pcr_allowlist["mask"]
-        # convert all pcr num keys to integers
-        pcr_allowlist = {int(k): v for k, v in list(pcr_allowlist.items())}
-
-        mb_pcrs_hashes, boot_aggregates, mb_measurement_data, mb_failure = mba.bootlog_parse(
-            mb_measurement_list, hash_alg
-        )
-        failure.merge(mb_failure)
-
-        pcrs_in_quote: Set[int] = set()  # PCRs in quote that were already used for some kind of validation
-
         pcr_nums = set(pcrs_dict.keys())
 
-        # Validate data PCR
         if config.TPM_DATA_PCR in pcr_nums and data is not None:
             expectedval = self.sim_extend(data, hash_alg)
             if expectedval != pcrs_dict[config.TPM_DATA_PCR]:
@@ -274,6 +238,51 @@ class Tpm:
                 f"Data PCR {config.TPM_DATA_PCR} is missing in quote, but is required",
                 True,
             )
+
+    def check_pcrs(
+        self,
+        agentAttestState: AgentAttestState,
+        tpm_policy: Union[str, Dict[str, Any]],
+        pcrs_dict: Dict[int, str],
+        data: Optional[str],
+        ima_measurement_list: Optional[str],
+        runtime_policy: Optional[RuntimePolicyType],
+        ima_keyrings: Optional[ImaKeyrings],
+        mb_measurement_list: Optional[str],
+        mb_policy: Optional[str],
+        hash_alg: Hash,
+        count: int,
+    ) -> Failure:
+        failure = Failure(Component.PCR_VALIDATION)
+
+        agent_id = agentAttestState.get_agent_id()
+
+        if isinstance(tpm_policy, str):
+            tpm_policy_dict = json.loads(tpm_policy)
+        else:
+            tpm_policy_dict = tpm_policy
+
+        pcr_allowlist = tpm_policy_dict.copy()
+
+        if "mask" in pcr_allowlist:
+            del pcr_allowlist["mask"]
+        # convert all pcr num keys to integers
+        pcr_allowlist = {int(k): v for k, v in list(pcr_allowlist.items())}
+
+        mb_pcrs_hashes, boot_aggregates, mb_measurement_data, mb_failure = mba.bootlog_parse(
+            mb_measurement_list, hash_alg
+        )
+
+        failure.merge(mb_failure)
+
+        pcrs_in_quote: Set[int] = set()  # PCRs in quote that were already used for some kind of validation
+
+        pcr_nums = set(pcrs_dict.keys())
+
+        # If additional data is provided, check its presence in the data PCR (defined by config.TPM_DATA_PCR)
+        if data is None:
+            self._check_data_pcr(agentAttestState, pcrs_dict, data, hash_alg, failure, pcrs_in_quote)
+
         # Check for ima PCR
         if config.IMA_PCR in pcr_nums:
             if ima_measurement_list is None:
@@ -424,8 +433,8 @@ class Tpm:
     def check_quote(
         self,
         agentAttestState: AgentAttestState,
-        nonce: str,
-        data: str,
+        nonce: bytes,
+        data: Optional[str],
         quote: str,
         aikTpmFromRegistrar: str,
         tpm_policy: Optional[Union[str, Dict[str, Any]]] = None,
@@ -530,6 +539,13 @@ class Tpm:
             current_clockinfo = tentative_current_clockinfo
 
         return None, current_clockinfo
+
+    @staticmethod
+    def get_pcrs_from_quote(quote, compressed):
+        _, sigblob, pcrblob = Tpm._get_quote_parameters(quote, compressed)
+        _, hash_alg, _ = struct.unpack_from(">HHH", sigblob, 0)
+        _, pcrs_dict = getattr(tpm_util, "__get_and_hash_pcrs")(pcrblob, hash_alg)
+        return pcrs_dict
 
     @staticmethod
     def sim_extend(hashval_1: str, hash_alg: Hash) -> str:

@@ -1,12 +1,18 @@
 import base64
 import hmac
+import json
+import traceback
 
 import cryptography.x509
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+from tornado.httpclient import AsyncHTTPClient, HTTPRequest
 
 from keylime import cert_utils, config, crypto, keylime_logging
 from keylime.models.base import Boolean, Certificate, Dictionary, Integer, OneOf, PersistableModel, String, da_manager
+from keylime.models.common.json_api import APIDocument
+from keylime.models.registrar.identity_decision import Identity, IdentityDecision
+from keylime.models.registrar.identity_decision_update import IdentityDecisionUpdate
 from keylime.tpm import tpm2_objects
 from keylime.tpm.tpm_main import Tpm
 
@@ -57,6 +63,10 @@ class RegistrarAgent(PersistableModel):
         agent = super().empty()
         agent.provider_keys = {}
         return agent
+
+    def __init__(self, *args, **kwargs):
+        self._identity_decision = IdentityDecision.empty()
+        super().__init__(*args, **kwargs)
 
     def _check_key_against_cert(self, tpm_key_field, cert_field):
         # If neither key nor certificate is being updated, no need to check
@@ -265,6 +275,48 @@ class RegistrarAgent(PersistableModel):
         if any(field in reg_fields for field in self.changes) and self.changes_valid:
             self.regcount += 1
 
+    def _build_identity_decision(self):
+        # TODO: replace this temporary implementation
+
+        self.identity_decision.identities.clear()
+
+        if not self.changes_valid:
+            return
+
+        if self.agent_id:
+            self.identity_decision.identities.add(Identity.create("identifier", "agent_id", self.agent_id))
+
+        if self.ek_tpm:
+            self.identity_decision.identities.add(Identity.create("public_key", "ek_tpm", self.ek_tpm))
+
+        if self.ekcert:
+            self.identity_decision.identities.add(Identity.create("certificate", "ekcert", self.ekcert))
+
+        if self.aik_tpm:
+            aik_tpm_identity = Identity.create("public_key", "aik_tpm", self.aik_tpm)
+            self.identity_decision.identities.add(aik_tpm_identity)
+
+        if self.iak_tpm:
+            self.identity_decision.identities.add(Identity.create("public_key", "iak_tpm", self.iak_tpm))
+
+        if self.iak_cert:
+            self.identity_decision.identities.add(Identity.create("certificate", "iak_cert", self.iak_cert))
+
+        if self.idevid_tpm:
+            self.identity_decision.identities.add(Identity.create("public_key", "idevid_tpm", self.idevid_tpm))
+
+        if self.idevid_cert:
+            self.identity_decision.identities.add(Identity.create("certificate", "idevid_cert", self.idevid_cert))
+
+        if self.active and self.ek_tpm and aik_tpm_identity:
+            aik_tpm_identity.add_binding("ek_tpm", "tpm_challenge")
+
+        self.identity_decision.finalise()
+
+        # import json
+        # document = APIDocument.create_data_doc("identity_decision_notification", self.identity_decision.render())
+        # print(json.dumps(document.render(), indent=4))
+
     def update(self, data):
         # Bind key-value pairs ('data') to those fields which are meant to be externally changeable
         self.cast_changes(
@@ -292,6 +344,60 @@ class RegistrarAgent(PersistableModel):
         self._prepare_status_flags()
         # Increment number of registrations if appropriate
         self._prepare_regcount()
+
+        self._build_identity_decision()
+
+    async def notify_webhooks(self):
+        # TODO: This implementation illustrates the webhook functionality but needs cleanup
+
+        webhooks = config.getlist("registrar", "identity_decisions_webhooks")
+        http_client = AsyncHTTPClient()
+
+        if len(webhooks) > 0:
+            logger.info("Identities for agent '%s' updated, notifying %s webhooks...", self.agent_id, len(webhooks))
+
+        for url in webhooks:
+            headers = {"content-type": "application/vnd.api+json"}
+            req_document = APIDocument.create_data_doc("identity_decision", self.identity_decision.render())
+            req_body = json.dumps(req_document.render())
+            request = HTTPRequest(url, "POST", headers, req_body)
+
+            try:
+                response = await http_client.fetch(request)
+            except Exception as err:
+                logger.warning(
+                    "Exception occurred during webhook request to endpoint '%s' :%s",
+                    url,
+                    traceback.format_exception(err),
+                )
+                continue
+
+            if response.code != 200:
+                logger.warning("Received %s response from webhook endpoint '%s'", response.code, url)
+                continue
+
+            res_body = Dictionary().cast(response.body.decode())
+
+            if not isinstance(res_body, dict):
+                logger.warning("Response received from webhook endpoint '%s' is not valid JSON", url)
+                continue
+
+            # res_document = APIDocument.empty()
+            # res_document.cast_changes(res_body)
+
+            identity_decision_update = IdentityDecisionUpdate.receive(res_body["data"]["attributes"])
+
+            if not identity_decision_update.changes_valid:
+                logger.warning(
+                    "Response received from webhook endpoint '%s' does not conform to the JSON:API profile for"
+                    "identity decision responses",
+                    url,
+                )
+                continue
+
+            identity_decision_update.apply(self)
+
+            logger.info("Successfully notified webhook endpoint '%s'", url)
 
     def produce_ak_challenge(self):
         if not self.ek_tpm or not self.aik_tpm:
@@ -354,3 +460,7 @@ class RegistrarAgent(PersistableModel):
             output["ekcert"] = base64.b64encode(self.ekcert.public_bytes(Encoding.DER)).decode("utf-8")
 
         return output
+
+    @property
+    def identity_decision(self):
+        return self._identity_decision

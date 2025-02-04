@@ -129,6 +129,14 @@ class ModelAssociation(ABC):
 
     @property
     def inverse_of(self) -> Optional[str]:
+        if not self._inverse_of:
+            # Get all associations which point from the associated model back to the parent model
+            candidates = [assoc for assoc in self.other_model.associations.values() if assoc.other_model == self]
+
+            # If there is only one such association in the associated model, the inverse association is unambiguous
+            if len(candidates) == 1:
+                self._inverse_of = candidates[0].name
+
         return self._inverse_of
 
     @property
@@ -142,6 +150,54 @@ class ModelAssociation(ABC):
     @abstractmethod
     def preload(self) -> bool:
         pass
+
+
+class EmbeddedAssociation(ModelAssociation):
+    @property
+    def preload(self) -> bool:
+        return True
+
+
+class EmbedsOneAssociation(EmbeddedAssociation):
+    def __get__(
+        self, parent_record: "BasicModel", _objtype: Optional[type["BasicModel"]] = None
+    ) -> Union["BasicModel", "EmbedsOneAssociation", None]:
+        return self._get_one(parent_record)
+
+    def __set__(self, parent_record: "BasicModel", other_record: "BasicModel") -> None:
+        self._set_one(parent_record, other_record)
+
+    if TYPE_CHECKING:
+
+        def _get_one(self, parent_record: "BasicModel") -> Union["BasicModel", "EmbedsOneAssociation", None]:
+            ...
+
+
+class EmbedsManyAssociation(EmbeddedAssociation):
+    def __get__(
+        self, parent_record: "BasicModel", _objtype: Optional[type["BasicModel"]] = None
+    ) -> Union["AssociatedRecordSet", "EmbedsManyAssociation", None]:
+        return self._get_many(parent_record)
+
+    if TYPE_CHECKING:
+
+        def _get_many(self, parent_record: "BasicModel") -> Union[AssociatedRecordSet, "EmbedsManyAssociation", None]:
+            ...
+
+
+class EmbeddedInAssociation(EmbeddedAssociation):
+    def __get__(
+        self, parent_record: "BasicModel", _objtype: Optional[type["BasicModel"]] = None
+    ) -> Union["BasicModel", "EmbedsOneAssociation", None]:
+        return self._get_one(parent_record)
+
+    def __set__(self, parent_record: "BasicModel", other_record: "BasicModel") -> None:
+        self._set_one(parent_record, other_record)
+
+    if TYPE_CHECKING:
+
+        def _get_one(self, parent_record: "BasicModel") -> Union["BasicModel", "EmbedsOneAssociation", None]:
+            ...
 
 
 class EntityAssociation(ModelAssociation):

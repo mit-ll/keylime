@@ -27,7 +27,7 @@ class AgentsController(Controller):
         self.respond(200, "Success", agent.render())
 
     # POST /v2[.:minor]/agents/[:agent_id]
-    def create(self, agent_id, **params):
+    async def create(self, agent_id, **params):
         agent = RegistrarAgent.get(agent_id) or RegistrarAgent.empty()  # type: ignore[no-untyped-call]
         agent.update({"agent_id": agent_id, **params})
         challenge = agent.produce_ak_challenge()
@@ -36,6 +36,8 @@ class AgentsController(Controller):
             self.log_model_errors(agent, logger)
             self.respond(400, "Could not register agent with invalid data")
             return
+
+        await agent.notify_webhooks()
 
         agent.commit_changes()
         self.respond(200, "Success", {"blob": challenge})
@@ -52,7 +54,7 @@ class AgentsController(Controller):
         self.respond(200, "Success")
 
     # POST /v2[.:minor]/agents/:agent_id/[activate]
-    def activate(self, agent_id, auth_tag, **_params):
+    async def activate(self, agent_id, auth_tag, **_params):
         agent = RegistrarAgent.get(agent_id)
 
         if not agent:
@@ -60,6 +62,8 @@ class AgentsController(Controller):
             return
 
         accepted = agent.verify_ak_response(auth_tag)
+
+        await agent.notify_webhooks()
 
         if accepted:
             agent.commit_changes()

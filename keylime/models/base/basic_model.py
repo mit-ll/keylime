@@ -249,22 +249,25 @@ class BasicModel(ABC, metaclass=BasicModelMeta):
 
     def __setattr__(self, name: str, value: Any) -> None:
         if (
-            name not in dir(self)
+            not name.startswith("_")
+            and name not in dir(self)
             and name not in type(self).INST_ATTRS
             and name not in type(self).fields.keys()
             and name not in type(self).associations.keys()
         ):
-            msg = f"model '{type(self).__name__}' does not define a field or attribute with name '{name}'"
+            msg = f"cannot set '{name}' as model '{type(self).__name__}' defines no field or attribute with that name"
             raise AttributeError(msg)
 
         super().__setattr__(name, value)
 
-    def __getattribute__(self, name: str) -> Any:
+    # TODO: Uncomment
+    """ def __getattribute__(self, name: str) -> Any:
         try:
             return super().__getattribute__(name)
         except AttributeError:
-            msg = f"model '{type(self).__name__}' does not define a field or attribute with name '{name}'"
+            msg = f"cannot get '{name}' as model '{type(self).__name__}' defines no field or attribute with that name"
             raise AttributeError(msg) from None
+    """
 
     def __repr__(self) -> str:
         """Returns a code-like string representation of the model instance
@@ -435,16 +438,66 @@ class BasicModel(ABC, metaclass=BasicModelMeta):
         if not re.fullmatch(format, value):
             self._add_error(field, msg or "does not have the correct format")
 
+    def validate_snake_case(self, fields: Union[str, Sequence[str]], msg: Optional[str] = None):
+        msg = msg or "can only contain lowercase letters, numbers and underscores"
+
+        for field in fields:
+            self.validate_format(field, "[a-z0-9_]+", msg)
+
+    def _render_field(self, name: str, data: dict[str, Any]) -> dict[str, Any]:
+        field = self.__class__.fields[name]
+        value = getattr(self, name, None)
+
+        if field.render:
+            data[name] = field.data_type.render(value)
+
+        return data
+
+    def _render_embedded_record(self, name: str, data: dict[str, Any]) -> dict[str, Any]:
+        value = getattr(self, name, None)
+        data[name] = value.render() if value is not None else None
+        return data
+
+    def _render_embedded_record_set(self, name: str, data: dict[str, Any]) -> dict[str, Any]:
+        value = getattr(self, name, None)
+
+        if value is None:
+            data[name] = None
+        else:
+            data[name] = []
+
+            for record in value:
+                data[name].append(record.render())
+
+        return data
+
     def render(self, only: Optional[Sequence[str]] = None) -> dict[str, Any]:
         data = {}
 
-        for name, field in self.__class__.fields.items():
+        # Locate record members by iterating through schema helper calls so that fields ane embedded records are
+        # rendered in the order in which they were defined
+        for _, args, kwargs in self.__class__.schema_helpers_used:
+            # Get member name from kwargs passed to schema helper or first positional argument
+            first_arg = args[0] if len(args) > 0 else None
+            name = kwargs.get("name") or first_arg
+
+            # If the "name" obtained does not look like a name, skip
+            if not name or not isinstance(name, str):
+                continue
+
+            # If member name not present in provided allowlist, skip
             if only and name not in only:
                 continue
 
-            value = getattr(self, name)
-
-            data[name] = field.data_type.render(value)
+            # If member name is the name of a field, render its value according to the field's data type
+            if name in self.__class__.fields.keys():
+                self._render_field(name, data)
+            # If member name is the name of an embedded record, render the full record
+            elif name in self.__class__.embeds_one_associations.keys():
+                self._render_embedded_record(name, data)
+            # If member name is the name of a set of embedded records, render as a list of records
+            elif name in self.__class__.embeds_many_associations.keys():
+                self._render_embedded_record_set(name, data)
 
         return data
 
@@ -461,9 +514,23 @@ class BasicModel(ABC, metaclass=BasicModelMeta):
         return MappingProxyType({**self.committed, **self.changes})
 
     @property
-    def errors(self) -> Mapping[str, Sequence[str]]:
+    def errors(self) -> Mapping[str, Sequence | Mapping]:
         errors = {field: errors for field, errors in self._errors.items() if len(errors) > 0}
-        return MappingProxyType(errors)
+
+        embeds = {**self.__class__.embeds_one_associations, **self.__class__.embeds_many_associations}
+
+        for name, embed in self.__class__.embeds_one_associations.items():
+            (record,) = embed.get_record_set(self) or (None,)
+
+            if record and record.errors:
+                errors.update({f"{name}.{fname}": error for fname, error in record.errors.items()})
+
+        for name, embed in self.__class__.embeds_many_associations.items():
+            for index, record in enumerate(embed.get_record_set(self)):
+                if record.errors:
+                    errors.update({f"{name}[{index}].{fname}": error for fname, error in record.errors.items()})
+
+        return errors
 
     @property
     def changes_valid(self) -> bool:

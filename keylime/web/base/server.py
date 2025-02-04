@@ -7,9 +7,10 @@ from typing import TYPE_CHECKING, Any, Callable, Optional
 
 import tornado
 
-from keylime import config, keylime_logging, web_util
+from keylime import config, keylime_logging, web_util, api_version
 from keylime.web.base.action_handler import ActionHandler
 from keylime.web.base.route import Route
+from keylime.web.base.stats_collector import StatsCollector
 
 if TYPE_CHECKING:
     from ssl import SSLContext
@@ -88,6 +89,21 @@ class Server(ABC):
     """
 
     @staticmethod
+    def _new_scoped_route(pattern_prefix: str, route: Route) -> Route:
+        pattern = pattern_prefix + route.pattern
+        return Route(route.method, pattern, route.controller, route.action, route.allow_insecure)
+
+    @staticmethod
+    def _make_versioned_routes(major_version: int, route: Route) -> list[Route]:
+        versioned_routes = [Server._new_scoped_route(f"/v{major_version}", route)]
+        versioned_routes = versioned_routes + [
+            Server._new_scoped_route(f"/v{version}", route)
+            for version in api_version.all_versions()
+            if api_version.major(version) == major_version
+        ]
+        return versioned_routes
+
+    @staticmethod
     def version_scope(major_version: int) -> Callable[..., Callable[..., Any]]:
         # pylint: disable=protected-access, unused-private-member
 
@@ -109,29 +125,12 @@ class Server(ABC):
                 # Call the decorated function and get the return value (typically None)
                 value = func(obj, *args, **kwargs)
 
-                # Iterate over routes created by the decorated function
+                # Iterate over routes created so far
                 for route in obj.routes:
                     # Check that the current route is a route newly created by the decorated function
                     if route not in initial_routes:
                         # Define routes scoped to the API version specified by major_version
-                        new_routes_list.extend(
-                            [
-                                Route(
-                                    route.method,
-                                    f"/v{major_version}{route.pattern}",
-                                    route.controller,
-                                    route.action,
-                                    route.allow_insecure,
-                                ),
-                                Route(
-                                    route.method,
-                                    f"/v{major_version}.:minor{route.pattern}",
-                                    route.controller,
-                                    route.action,
-                                    route.allow_insecure,
-                                ),
-                            ]
-                        )
+                        new_routes_list.extend(Server._make_versioned_routes(major_version, route))
 
                 # Replace the Server instance's list of routes with a new list consisting of the routes which were
                 # present before func was called and the new routes scoped to major_version
@@ -143,6 +142,37 @@ class Server(ABC):
             return version_scope_wrapper
 
         return version_scope_decorator
+
+    @staticmethod
+    def push_only(func):
+        @wraps(func)  # preserves the name and module of func when introspected
+        def push_only_wrapper(obj: Server, *args: Any, **kwargs: Any) -> Any:
+            value = func(obj, *args, **kwargs)
+            if not isinstance(obj, Server):
+                raise TypeError(
+                    "The @Server.push_only decorator can only be used on methods of a class which inherits from Server"
+                )
+
+            # TODO: Change fallback to "pull" and add config option
+            if config.get("verifier", "mode", fallback="push") == "push":
+                return value
+
+        return push_only_wrapper
+
+    @staticmethod
+    def pull_only(func):
+        @wraps(func)  # preserves the name and module of func when introspected
+        def pull_only_wrapper(obj: Server, *args: Any, **kwargs: Any) -> Any:
+            if not isinstance(obj, Server):
+                raise TypeError(
+                    "The @Server.pull_only decorator can only be used on methods of a class which inherits from Server"
+                )
+
+            # TODO: Change fallback to "pull" and add config option
+            if config.get("verifier", "mode", fallback="push") == "pull":
+                return func(obj, *args, **kwargs)
+
+        return pull_only_wrapper
 
     def __init__(self, **options: Any) -> None:
         """Initialise server with provided configuration options or default values and bind to sockets for HTTP and/or
@@ -171,7 +201,9 @@ class Server(ABC):
         if not self.host:
             raise ValueError(f"server '{self.__class__.__name__}' cannot be initialised without a value for 'host'")
 
-        if not self.http_port or (not self.https_port or not self.ssl_ctx):
+        # TODO fix this logic
+        # if not self.http_port or (not self.https_port or not self.ssl_ctx):
+        if not self.http_port:
             raise ValueError(
                 f"server '{self.__class__.__name__}' cannot be initialised without either 'http_port' or 'https_port'"
                 f"and 'ssl_ctx'"
@@ -232,8 +264,12 @@ class Server(ABC):
             "Listening on %s:%s (%s) with %s worker processes...", self.host, ports, protocols, self.worker_count
         )
 
-        tornado.process.fork_processes(self.worker_count)
-        asyncio.run(self.start_single())
+        with StatsCollector():
+            # num = manager.Value('i', 0)
+            tornado.process.fork_processes(self.worker_count)
+            # num.value = num.value + 1
+            # print(num.value)
+            asyncio.run(self.start_single())
 
     def _setup(self) -> None:
         """Defines values to use in place of the defaults for the various server options. It is suggested that this is
