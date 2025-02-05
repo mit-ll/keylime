@@ -1,0 +1,214 @@
+# Keylime tenant configuration
+[tenant]
+
+# The configuration file version number
+version = {{ tenant.version }}
+
+# The verifier IP address and port
+verifier_ip = {{ tenant.verifier_ip }}
+verifier_port = {{ tenant.verifier_port }}
+
+# The registrar IP address and port
+registrar_ip = {{ tenant.registrar_ip }}
+registrar_port = {{ tenant.registrar_port }}
+
+# The 'tls_dir' option define the directory where the keys and certificates are
+# stored.
+#
+# If set as 'default', share the files with the verifier by using the
+# 'var/lib/keylime/cv_ca', which should contain the files indicated by the
+# 'client_key', 'client_cert', and 'trusted_server_ca' options.
+tls_dir = {{ tenant.tls_dir }}
+
+# The keystore password
+# This password is used to protect the generated CA private key.
+password = {{ ca.password }}
+
+# CountryName argument (C) of the Issuer when generating certificates
+cert_country = {{ ca.cert_country }}
+
+# CommonName argument (CN) of the Issuer when generating certificates
+cert_ca_name = {{ ca.cert_ca_name }}
+
+# StateOrProvinceName argument (S) of the Issuer when generating certificates
+cert_state = {{ ca.cert_state }}
+
+# Locality argument (L) of the Issuer when generating certificates
+cert_locality = {{ ca.cert_locality }}
+
+# Organization argument (O) of the Issuer when generating certificates
+cert_organization = {{ ca.cert_organization }}
+
+# OrganizationalUnit argument (OU) of the Issuer when generating certificates
+cert_org_unit = {{ ca.cert_org_unit }}
+
+# CA certificate validity time in days
+cert_ca_lifetime = {{ ca.cert_ca_lifetime }}
+
+# Default generated certificate validity time in days
+cert_lifetime = {{ ca.cert_lifetime }}
+
+# Key length in bits
+cert_bits = {{ ca.cert_bits }}
+
+# Certification Revocation List (CRL) distribution address (URL)
+cert_crl_dist = {{ ca.cert_crl_dist }}
+
+# Enable mTLS communication between agent, verifier and tenant.
+# Details on why setting it to "False" is generally considered insecure can be found
+# on https://github.com/keylime/keylime/security/advisories/GHSA-2m39-75g9-ff5r
+enable_agent_mtls = {{ tenant.enable_agent_mtls }}
+
+# The name of the file containing the Keylime tenant client private key.
+# The file should be stored in the directory set in the 'tls_dir' option.
+# This private key is used by the Keylime tenant to connect to the other
+# services using TLS.
+#
+# If set as 'default', the 'client-private.pem' value is used.
+client_key = {{ tenant.client_key }}
+
+# Set the password used to encrypt the private key file.
+# If client_key is set as 'default', should match the password set in the
+# 'client_key_password' option in the verifier configuration file
+client_key_password = {{ tenant.client_key_password }}
+
+# The name of the file containing the Keylime tenant client certificate.
+# The file should be stored in the directory set in the 'tls_dir' option.
+# This certificate is used by the Keylime tenant to connect to the other
+# services using TLS.
+#
+# If set as 'default', the 'client-cert.crt' value is used.
+client_cert = {{ tenant.client_cert }}
+
+# The list of trusted server CA certificates.
+# The files in the list should be stored in the directory set in the 'tls_dir'
+# option.
+#
+# If set as 'default', the value is set as '[cacert.crt]'
+trusted_server_ca = {{ tenant.trusted_server_ca }}
+
+# Directory containing the EK CA certificates.
+# The EK certificate provided by the agent will be validated against the CAs
+# located in this directory.
+tpm_cert_store = {{ tenant.tpm_cert_store }}
+
+# Maximum size of the payload in bytes. The value should match the 'secure_size'
+# option in the agent configuration
+max_payload_size = {{ tenant.max_payload_size }}
+
+# List of hash algorithms used for PCRs
+# Accepted values: sha512, sha384, sha256, sha1
+accept_tpm_hash_algs = {{ tenant.accept_tpm_hash_algs }}
+
+# List of encryption algorithms to use with the TPM
+# Accepted values: ecc, rsa
+accept_tpm_encryption_algs = {{ tenant.accept_tpm_encryption_algs }}
+
+# List of signature algorithms to use
+# Accepted values: rsassa, rsapss, ecdsa, ecdaa, ecschnorr
+accept_tpm_signing_algs = {{ tenant.accept_tpm_signing_algs }}
+
+# Wether or not to use an exponantial backoff algorithm for retries.
+exponential_backoff = {{ tenant.exponential_backoff }}
+
+# Either how long to wait between failed attempts to communicate with the TPM
+# in seconds, or the base for the exponential backoff algorithm if enabled via
+# "exponential_backoff" option.
+# Floating point values are accepted.
+retry_interval = {{ tenant.retry_interval }}
+
+# Integer number of retries to communicate with the TPM before giving up.
+max_retries = {{ tenant.max_retries }}
+
+# Request timeout in seconds.
+request_timeout = {{ tenant.request_timeout }}
+
+# Tell the tenant whether to require an EK certificate from the TPM.
+# If set to False the tenant will ignore EK certificates entirely.
+#
+# WARNING: SETTING THIS OPTION TO FALSE IS VERY DANGEROUS!!!
+#
+# If you disable this check, then you may not be talking to a real TPM.
+# All the security guarantees of Keylime rely upon the security of the EK
+# and the assumption that you are talking to a spec-compliant and honest TPM.
+
+# Some physical TPMs do not have EK certificates, so you may need to set
+# this to "False" for some deployments.  If you do set it to "False", you
+# MUST use the 'ek_check_script' option below to specify a script that will
+# check the provided EK against a allowlist for the environment that has
+# been collected in a trustworthy way.  For example, the cloud provider
+# might provide a signed list of EK public key hashes.  Then you could write
+# an ek_check_script that checks the signature of the allowlist and then
+# compares the hash of the given EK with the allowlist.
+require_ek_cert = {{ tenant.require_ek_cert }}
+
+# Optional script to execute to check the EK and/or EK certificate against a
+# allowlist or any other additional EK processing you want to do. Runs in
+# /var/lib/keylime. You call also specify an absolute path to the script.
+# Script should return 0 if the EK or EK certificate are valid.  Any other
+# return value will invalidate the tenant quote check and prevent
+# bootstrapping a key.
+#
+# The various keys are passed to the script via environment variables:
+# EK - contains a PEM encoded version of the public EK
+# EK_CERT - contains a DER encoded EK certificate if one is available.
+# PROVKEYS - contains a json document containing EK, EKcert, and AIK from the
+# provider.  EK and AIK are in PEM format.  The EKcert is in base64 encoded
+# DER format.
+#
+# Set to blank to disable this check.  See warning above if require_ek_cert
+# is "False".
+ek_check_script = {{ tenant.ek_check_script }}
+
+# Path to file containing the measured boot reference state
+mb_refstate = {{ tenant.mb_refstate }}
+
+# Logging Configuration Template
+# This section contains the default logging configuration for the application.
+# Key Points:
+# 1. The current settings reflect the default configuration.
+# 2. Uncomment sections to override the defaults.
+# 3. You can create new handlers and attach them to custom loggers for specific use cases.
+
+# Formatters Section
+# Define the format of log messages. Uncomment and modify to customize.
+
+#[formatter_formatter]
+#format = {{ formatter_formatter.format }}
+#datefmt = {{ formatter_formatter.datefmt }}
+
+# Handlers Section
+# Define where log messages are sent. Uncomment and modify to customize.
+
+# Default console handler for the root logger.
+#[handler_consoleHandler]
+#class = {{ handler_consoleHandler.class }}
+#level = {{ handler_consoleHandler.level }}
+#formatter = {{ handler_consoleHandler.formatter }}
+#args = {{ handler_consoleHandler.args }}
+
+# Loggers Section
+# The root and keylime logger configuration. Uncomment and modify to customize.
+
+#[logger_root]
+#level = {{ logger_root.level }}
+#handlers = {{ logger_root.handlers }}
+
+#[logger_keylime]
+#level = {{ logger_keylime.level }}
+
+# EXAMPLE Section
+# Define additional loggers for specific components. Uncomment and modify as needed.
+
+# File handler for logging to a file.
+#[handler_file]
+#class = logging.FileHandler
+#level = DEBUG
+#formatter = formatter
+#args = (tenant.log,)
+
+# Logger for a custom component.
+#[logger_keylime.tenant]
+#level = DEBUG
+#handlers = file
+#propagate = 1

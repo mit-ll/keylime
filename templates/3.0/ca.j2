@@ -1,0 +1,40 @@
+# Keylime CA configuration
+[ca]
+
+# The keystore password
+# This password is used to protect the generated CA private key.
+password = {{ ca.password }}
+
+# The configuration file version number
+version = {{ ca.version }}
+
+# CountryName argument (C) of the Issuer when generating certificates
+cert_country = {{ ca.cert_country }}
+
+# CommonName argument (CN) of the Issuer when generating certificates
+cert_ca_name = {{ ca.cert_ca_name }}
+
+# StateOrProvinceName argument (S) of the Issuer when generating certificates
+cert_state = {{ ca.cert_state }}
+
+# Locality argument (L) of the Issuer when generating certificates
+cert_locality = {{ ca.cert_locality }}
+
+# Organization argument (O) of the Issuer when generating certificates
+cert_organization = {{ ca.cert_organization }}
+
+# OrganizationalUnit argument (OU) of the Issuer when generating certificates
+cert_org_unit = {{ ca.cert_org_unit }}
+
+# CA certificate validity time in days
+cert_ca_lifetime = {{ ca.cert_ca_lifetime }}
+
+# Default generated certificate validity time in days
+cert_lifetime = {{ ca.cert_lifetime }}
+
+# Key length in bits
+cert_bits = {{ ca.cert_bits }}
+
+# Certification Revocation List (CRL) distribution address (URL)
+cert_crl_dist = {{ ca.cert_crl_dist }}
+

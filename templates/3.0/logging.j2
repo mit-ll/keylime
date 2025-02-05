@@ -1,0 +1,33 @@
+# Keylime logging configuration
+
+# The configuration file version number
+[logging]
+version = {{ logging.version }}
+
+[loggers]
+keys = {{ loggers.get('keys') }}
+
+[handlers]
+keys = {{ handlers.get('keys') }}
+
+[formatters]
+keys = {{ formatters.get('keys') }}
+
+[formatter_formatter]
+format = {{ formatter_formatter.format }}
+datefmt = {{ formatter_formatter.datefmt }}
+
+[logger_root]
+level = {{ logger_root.level }}
+handlers = {{ logger_root.handlers }}
+
+[handler_consoleHandler]
+class = {{ handler_consoleHandler.class }}
+level = {{ handler_consoleHandler.level }}
+formatter = {{ handler_consoleHandler.formatter }}
+args = {{ handler_consoleHandler.args }}
+
+[logger_keylime]
+level = {{ logger_keylime.level }}
+qualname = {{ logger_keylime.qualname }}
+handlers = {{ logger_keylime.handlers }}

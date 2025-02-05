@@ -34,20 +34,20 @@ def mk_cert_valid(cert_req: CertificateBuilder, days: int = 365) -> CertificateB
     return cert_req
 
 
-def mk_name(common_name: str) -> Name:
+def mk_name(component: str, common_name: str) -> Name:
     return x509.Name(
         [
-            x509.NameAttribute(NameOID.COUNTRY_NAME, config.get("ca", "cert_country")),
+            x509.NameAttribute(NameOID.COUNTRY_NAME, config.get(component, "cert_country")),
             x509.NameAttribute(NameOID.COMMON_NAME, common_name),
-            x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, config.get("ca", "cert_state")),
-            x509.NameAttribute(NameOID.LOCALITY_NAME, config.get("ca", "cert_locality")),
-            x509.NameAttribute(NameOID.ORGANIZATION_NAME, config.get("ca", "cert_organization")),
-            x509.NameAttribute(NameOID.ORGANIZATIONAL_UNIT_NAME, config.get("ca", "cert_org_unit")),
+            x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, config.get(component, "cert_state")),
+            x509.NameAttribute(NameOID.LOCALITY_NAME, config.get(component, "cert_locality")),
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, config.get(component, "cert_organization")),
+            x509.NameAttribute(NameOID.ORGANIZATIONAL_UNIT_NAME, config.get(component, "cert_org_unit")),
         ]
     )
 
 
-def mk_request(bits: int, common_name: str) -> Tuple[CertificateBuilder, RSAPrivateKey]:
+def mk_request(component: str, bits: int, common_name: str) -> Tuple[CertificateBuilder, RSAPrivateKey]:
     """
     Create a X509 request with the given number of bits in they key.
     Args:
@@ -64,27 +64,27 @@ def mk_request(bits: int, common_name: str) -> Tuple[CertificateBuilder, RSAPriv
 
     cert_req = x509.CertificateBuilder()
 
-    subject = mk_name(common_name)
+    subject = mk_name(component, common_name)
     cert_req = cert_req.subject_name(subject)
     return cert_req, privkey
 
 
-def mk_cacert(name: Optional[str] = None) -> Tuple[Certificate, RSAPrivateKey, RSAPublicKey]:
+def mk_cacert(component: str, name: Optional[str] = None) -> Tuple[Certificate, RSAPrivateKey, RSAPublicKey]:
     """
     Make a CA certificate.
     Returns the certificate, private key and public key.
     """
 
     if name is None:
-        name = config.get("ca", "cert_ca_name")
-    cert_req, privkey = mk_request(config.getint("ca", "cert_bits"), name)
+        name = config.get(component, "cert_ca_name")
+    cert_req, privkey = mk_request(component, config.getint(component, "cert_bits"), name)
 
     pubkey = privkey.public_key()
     cert_req = cert_req.public_key(pubkey)
 
     cert_req = cert_req.serial_number(1)
-    cert_req = mk_cert_valid(cert_req, config.getint("ca", "cert_ca_lifetime"))
-    cert_req = cert_req.issuer_name(mk_name(name))
+    cert_req = mk_cert_valid(cert_req, config.getint(component, "cert_ca_lifetime"))
+    cert_req = cert_req.issuer_name(mk_name(component, name))
 
     # Extensions.
     extensions = [
@@ -98,7 +98,7 @@ def mk_cacert(name: Optional[str] = None) -> Tuple[Certificate, RSAPrivateKey, R
                 [
                     x509.DistributionPoint(
                         full_name=[
-                            x509.UniformResourceIdentifier(config.get("ca", "cert_crl_dist")),
+                            x509.UniformResourceIdentifier(config.get(component, "cert_crl_dist")),
                         ],
                         relative_name=None,
                         reasons=None,
@@ -140,13 +140,13 @@ def mk_cacert(name: Optional[str] = None) -> Tuple[Certificate, RSAPrivateKey, R
 
 
 def mk_signed_cert(
-    cacert: Certificate, ca_privkey: CERTIFICATE_PRIVATE_KEY_TYPES, name: str, serialnum: int
+    component: str, cacert: Certificate, ca_privkey: CERTIFICATE_PRIVATE_KEY_TYPES, name: str, serialnum: int
 ) -> Tuple[Certificate, RSAPrivateKey]:
     """
     Create a CA cert + server cert + server private key.
     """
 
-    cert_req, privkey = mk_request(config.getint("ca", "cert_bits"), common_name=name)
+    cert_req, privkey = mk_request(component, config.getint(component, "cert_bits"), common_name=name)
     pubkey = privkey.public_key()
     cert_req = cert_req.public_key(pubkey)
 
@@ -169,7 +169,7 @@ def mk_signed_cert(
             [
                 x509.DistributionPoint(
                     full_name=[
-                        x509.UniformResourceIdentifier(config.get("ca", "cert_crl_dist")),
+                        x509.UniformResourceIdentifier(config.get(component, "cert_crl_dist")),
                     ],
                     relative_name=None,
                     reasons=None,

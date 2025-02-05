@@ -179,7 +179,7 @@ def init_mtls(config):
     # Create HIL Server Connect certs (if not already present)
     if not os.path.exists("%s/%s-cert.crt" % (tls_dir, config["ip"])):
         logger.info("Generating new Agent Monitor TLS Certs in %s for connecting" % tls_dir)
-        ca_util.cmd_mkcert(tls_dir, config["ip"])
+        ca_util.cmd_mkcert("tenant", tls_dir, config["ip"])
 
     ca_path = "%s/cacert.crt" % (tls_dir)
     my_cert = "%s/%s-cert.crt" % (tls_dir, config["ip"])

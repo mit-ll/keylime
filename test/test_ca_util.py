@@ -27,17 +27,17 @@ class CA_Util_Test(unittest.TestCase):
         self.assertEqual(cert.serial_number, 1)
 
     def test_ca_util(self):
-        ca_util.read_password("42")
+        ca_util.read_password("verifier", "42")
 
         # Create directory to be our working dir.
         working_dir = tempfile.mkdtemp()
         assert working_dir
         try:
             # cmd_init()
-            ca_util.cmd_init(working_dir)
+            ca_util.cmd_init("verifier", working_dir)
 
             # cmd_mkcert()
-            ca_util.cmd_mkcert(working_dir, "foo bar")
+            ca_util.cmd_mkcert("verifier", working_dir, "foo bar")
 
             # cmd_certpkg()
             ca_util.cmd_certpkg(working_dir, "foo bar")
@@ -53,7 +53,7 @@ class CA_Util_Test(unittest.TestCase):
     def test_ca_import_priv_classic(self):
         curdir = os.path.dirname(os.path.abspath(__file__))
         keydir = os.path.join(curdir, "data", "ima_keys")
-        ca_util.read_password("42")
+        ca_util.read_password("verifier", "42")
         # Create directory to be our working dir.
         working_dir = tempfile.mkdtemp()
         assert working_dir
@@ -72,7 +72,7 @@ class CA_Util_Test(unittest.TestCase):
     def test_ca_import_priv_pkcs8(self):
         curdir = os.path.dirname(os.path.abspath(__file__))
         key = os.path.join(curdir, "data", "ca-private.pem")
-        ca_util.read_password("42")
+        ca_util.read_password("verifier", "42")
         # Create directory to be our working dir.
         working_dir = tempfile.mkdtemp()
         assert working_dir

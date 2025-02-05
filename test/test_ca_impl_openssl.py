@@ -20,9 +20,9 @@ sys.path.insert(0, CODE_ROOT)
 
 class OpenSSL_Test(unittest.TestCase):
     def test_openssl(self):
-        _ = ca_impl_openssl.mk_cacert("my ca")
-        (ca_cert, ca_pk, _) = ca_impl_openssl.mk_cacert()
-        cert, _ = ca_impl_openssl.mk_signed_cert(ca_cert, ca_pk, "cert", 4)
+        _ = ca_impl_openssl.mk_cacert("verifier", "my ca")
+        (ca_cert, ca_pk, _) = ca_impl_openssl.mk_cacert("verifier")
+        cert, _ = ca_impl_openssl.mk_signed_cert("verifier", ca_cert, ca_pk, "cert", 4)
 
         pubkey = ca_cert.public_key()
         assert isinstance(pubkey, RSAPublicKey)
@@ -42,10 +42,10 @@ class OpenSSL_Test(unittest.TestCase):
         self.assertEqual(cert.serial_number, 4)
 
     def test_openssl_crl_dist(self):
-        os.environ["KEYLIME_CA_CERT_CRL_DIST"] = "http://foobar.org"
-        _ = ca_impl_openssl.mk_cacert("my ca")
-        (ca_cert, ca_pk, _) = ca_impl_openssl.mk_cacert()
-        cert, _ = ca_impl_openssl.mk_signed_cert(ca_cert, ca_pk, "cert", 4)
+        os.environ["KEYLIME_VERIFIER_CERT_CRL_DIST"] = "http://foobar.org"
+        _ = ca_impl_openssl.mk_cacert("verifier", "my ca")
+        (ca_cert, ca_pk, _) = ca_impl_openssl.mk_cacert("verifier")
+        cert, _ = ca_impl_openssl.mk_signed_cert("verifier", ca_cert, ca_pk, "cert", 4)
 
         pubkey = ca_cert.public_key()
         assert isinstance(pubkey, RSAPublicKey)
@@ -65,7 +65,7 @@ class OpenSSL_Test(unittest.TestCase):
         self.assertEqual(cert.serial_number, 4)
         self.assertEqual(
             cert.extensions.get_extension_for_class(CRLDistributionPoints).value[0].full_name[0].value,
-            os.environ["KEYLIME_CA_CERT_CRL_DIST"],
+            os.environ["KEYLIME_VERIFIER_CERT_CRL_DIST"],
         )
 
 

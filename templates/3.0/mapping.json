@@ -1,0 +1,878 @@
+{
+    "version": "3.0",
+    "components": {
+        "agent": {
+            "version": {
+                "section": "agent",
+                "option": "version",
+                "default": "3.0"
+            },
+            "revocation_notification_ip": {
+                "section": "agent",
+                "option": "revocation_notification_ip",
+                "default": "127.0.0.1"
+            },
+            "revocation_notification_port": {
+                "section": "agent",
+                "option": "revocation_notification_port",
+                "default": "8992"
+            },
+            "uuid": {
+                "section": "agent",
+                "option": "uuid",
+                "default": "d432fbb3-d2f1-4a97-9ef7-75bd81c00000"
+            },
+            "ip": {
+                "section": "agent",
+                "option": "ip",
+                "default": "127.0.0.1"
+            },
+            "port": {
+                "section": "agent",
+                "option": "port",
+                "default": "9002"
+            },
+            "contact_ip": {
+                "section": "agent",
+                "option": "contact_ip",
+                "default": "127.0.0.1"
+            },
+            "contact_port": {
+                "section": "agent",
+                "option": "contact_port",
+                "default": "9002"
+            },
+            "registrar_ip": {
+                "section": "agent",
+                "option": "registrar_ip",
+                "default": "127.0.0.1"
+            },
+            "registrar_port": {
+                "section": "agent",
+                "option": "registrar_port",
+                "default": "8890"
+            },
+            "enable_agent_mtls": {
+                "section": "agent",
+                "option": "enable_agent_mtls",
+                "default": "true"
+            },
+            "tls_dir": {
+                "section": "agent",
+                "option": "tls_dir",
+                "default": "default"
+            },
+            "server_key": {
+                "section": "agent",
+                "option": "server_key",
+                "default": "default"
+            },
+            "server_cert": {
+                "section": "agent",
+                "option": "server_cert",
+                "default": "default"
+            },
+            "server_key_password": {
+                "section": "agent",
+                "option": "server_key_password",
+                "default": ""
+            },
+            "trusted_client_ca": {
+                "section": "agent",
+                "option": "trusted_client_ca",
+                "default": "default"
+            },
+            "enc_keyname": {
+                "section": "agent",
+                "option": "enc_keyname",
+                "default": "derived_tci_key"
+            },
+            "dec_payload_file": {
+                "section": "agent",
+                "option": "dec_payload_file",
+                "default": "decrypted_payload"
+            },
+            "secure_size": {
+                "section": "agent",
+                "option": "secure_size",
+                "default": "1m"
+            },
+            "tpm_ownerpassword": {
+                "section": "agent",
+                "option": "tpm_ownerpassword",
+                "default": ""
+            },
+            "extract_payload_zip": {
+                "section": "agent",
+                "option": "extract_payload_zip",
+                "default": "true"
+            },
+            "enable_revocation_notifications": {
+                "section": "agent",
+                "option": "enable_revocation_notifications",
+                "default": "true"
+            },
+            "revocation_cert": {
+                "section": "agent",
+                "option": "revocation_cert",
+                "default": "default"
+            },
+            "revocation_actions": {
+                "section": "agent",
+                "option": "revocation_actions",
+                "default": "[]"
+            },
+            "payload_script": {
+                "section": "agent",
+                "option": "payload_script",
+                "default": "autorun.sh"
+            },
+            "enable_insecure_payload": {
+                "section": "agent",
+                "option": "enable_insecure_payload",
+                "default": "false"
+            },
+            "measure_payload_pcr": {
+                "section": "agent",
+                "option": "measure_payload_pcr",
+                "default": "-1"
+            },
+            "exponential_backoff": {
+                "section": "agent",
+                "option": "exponential_backoff",
+                "default": "true"
+            },
+            "retry_interval": {
+                "section": "agent",
+                "option": "retry_interval",
+                "default": "2"
+            },
+            "max_retries": {
+                "section": "agent",
+                "option": "max_retries",
+                "default": "4"
+            },
+            "tpm_hash_alg": {
+                "section": "agent",
+                "option": "tpm_hash_alg",
+                "default": "sha256"
+            },
+            "tpm_encryption_alg": {
+                "section": "agent",
+                "option": "tpm_encryption_alg",
+                "default": "rsa"
+            },
+            "tpm_signing_alg": {
+                "section": "agent",
+                "option": "tpm_signing_alg",
+                "default": "rsassa"
+            },
+            "ek_handle": {
+                "section": "agent",
+                "option": "ek_handle",
+                "default": "generate"
+            },
+            "run_as": {
+                "section": "agent",
+                "option": "run_as",
+                "default": "keylime:tss"
+            },
+            "enable_iak_idevid": {
+                "section": "agent",
+                "option": "enable_iak_idevid",
+                "default": "false"
+            },
+            "iak_idevid_name_alg": {
+                "section": "agent",
+                "option": "iak_idevid_name_alg",
+                "default": "sha256"
+            },
+            "iak_idevid_asymmetric_alg": {
+                "section": "agent",
+                "option": "iak_idevid_asymmetric_alg",
+                "default": "rsa"
+            },
+            "iak_idevid_template": {
+                "section": "agent",
+                "option": "iak_idevid_template",
+                "default": "detect"
+            },
+            "iak_cert": {
+                "section": "agent",
+                "option": "iak_cert",
+                "default": "default"
+            },
+            "idevid_cert": {
+                "section": "agent",
+                "option": "idevid_cert",
+                "default": "default"
+            },
+            "ima_ml_path": {
+                "section": "agent",
+                "option": "ima_ml_path",
+                "default": "default"
+            },
+            "measuredboot_ml_path": {
+                "section": "agent",
+                "option": "measuredboot_ml_path",
+                "default": "default"
+            },
+            "idevid_password": {
+                "section": "agent",
+                "option": "idevid_password",
+                "default": ""
+            },
+            "idevid_handle": {
+                "section": "agent",
+                "option": "idevid_handle",
+                "default": ""
+            },
+            "iak_password": {
+                "section": "agent",
+                "option": "iak_password",
+                "default": ""
+            },
+            "iak_handle": {
+                "section": "agent",
+                "option": "iak_handle",
+                "default": ""
+            },
+            "api_versions": {
+                "section": "agent",
+                "option": "api_versions",
+                "default": "default"
+            }
+        },
+        "verifier": {
+            "version": {
+                "section": "verifier",
+                "option": "version",
+                "default": "3.0"
+            },
+            "uuid": {
+                "section": "verifier",
+                "option": "uuid",
+                "default": "default"
+            },
+            "ip": {
+                "section": "verifier",
+                "option": "ip",
+                "default": "127.0.0.1"
+            },
+            "port": {
+                "section": "verifier",
+                "option": "port",
+                "default": "8881"
+            },
+            "registrar_ip": {
+                "section": "verifier",
+                "option": "registrar_ip",
+                "default": "127.0.0.1"
+            },
+            "registrar_port": {
+                "section": "verifier",
+                "option": "registrar_port",
+                "default": "8891"
+            },
+            "tls_dir": {
+                "section": "verifier",
+                "option": "tls_dir",
+                "default": "generate"
+            },
+            "trusted_client_ca": {
+                "section": "verifier",
+                "option": "trusted_client_ca",
+                "default": "default"
+            },
+            "server_cert": {
+                "section": "verifier",
+                "option": "server_cert",
+                "default": "default"
+            },
+            "server_key": {
+                "section": "verifier",
+                "option": "server_key",
+                "default": "default"
+            },
+            "server_key_password": {
+                "section": "verifier",
+                "option": "server_key_password",
+                "default": ""
+            },
+            "enable_agent_mtls": {
+                "section": "verifier",
+                "option": "enable_agent_mtls",
+                "default": "True"
+            },
+            "client_cert": {
+                "section": "verifier",
+                "option": "client_cert",
+                "default": "default"
+            },
+            "client_key": {
+                "section": "verifier",
+                "option": "client_key",
+                "default": "default"
+            },
+            "client_key_password": {
+                "section": "verifier",
+                "option": "client_key_password",
+                "default": ""
+            },
+            "trusted_server_ca": {
+                "section": "verifier",
+                "option": "trusted_server_ca",
+                "default": "default"
+            },
+            "database_url": {
+                "section": "verifier",
+                "option": "database_url",
+                "default": "sqlite"
+            },
+            "database_pool_sz_ovfl": {
+                "section": "verifier",
+                "option": "database_pool_sz_ovfl",
+                "default": "5,10"
+            },
+            "auto_migrate_db": {
+                "section": "verifier",
+                "option": "auto_migrate_db",
+                "default": "True"
+            },
+            "num_workers": {
+                "section": "verifier",
+                "option": "num_workers",
+                "default": "0"
+            },
+            "exponential_backoff": {
+                "section": "verifier",
+                "option": "exponential_backoff",
+                "default": "True"
+            },
+            "retry_interval": {
+                "section": "verifier",
+                "option": "retry_interval",
+                "default": "2"
+            },
+            "max_retries": {
+                "section": "verifier",
+                "option": "max_retries",
+                "default": "5"
+            },
+            "request_timeout": {
+                "section": "verifier",
+                "option": "request_timeout",
+                "default": "60.0"
+            },
+            "quote_interval": {
+                "section": "verifier",
+                "option": "quote_interval",
+                "default": "2"
+            },
+            "max_upload_size": {
+                "section": "verifier",
+                "option": "max_upload_size",
+                "default": "104857600"
+            },
+            "measured_boot_policy_name": {
+                "section": "verifier",
+                "option": "measured_boot_policy_name",
+                "default": "accept-all"
+            },
+            "measured_boot_imports": {
+                "section": "verifier",
+                "option": "measured_boot_imports",
+                "default": "[]"
+            },
+            "measured_boot_evaluate": {
+                "section": "verifier",
+                "option": "measured_boot_evaluate",
+                "default": "once"
+            },
+            "severity_labels": {
+                "section": "verifier",
+                "option": "severity_labels",
+                "default": "[\"info\", \"notice\", \"warning\", \"error\", \"critical\", \"alert\", \"emergency\"]"
+            },
+            "severity_policy": {
+                "section": "verifier",
+                "option": "severity_policy",
+                "default": "[{\"event_id\": \".*\", \"severity_label\" : \"emergency\"}]"
+            },
+            "ignore_tomtou_errors": {
+                "section": "verifier",
+                "option": "ignore_tomtou_errors",
+                "default": "False"
+            },
+            "require_allow_list_signatures": {
+                "section": "verifier",
+                "option": "require_allow_list_signatures",
+                "default": "False"
+            },
+            "durable_attestation_import": {
+                "section": "verifier",
+                "option": "durable_attestation_import",
+                "default": ""
+            },
+            "persistent_store_url": {
+                "section": "verifier",
+                "option": "persistent_store_url",
+                "default": ""
+            },
+            "transparency_log_url": {
+                "section": "verifier",
+                "option": "transparency_log_url",
+                "default": ""
+            },
+            "time_stamp_authority_url": {
+                "section": "verifier",
+                "option": "time_stamp_authority_url",
+                "default": ""
+            },
+            "time_stamp_authority_certs_path": {
+                "section": "verifier",
+                "option": "time_stamp_authority_certs_path",
+                "default": ""
+            },
+            "persistent_store_format": {
+                "section": "verifier",
+                "option": "persistent_store_format",
+                "default": "json"
+            },
+            "persistent_store_encoding": {
+                "section": "verifier",
+                "option": "persistent_store_encoding",
+                "default": ""
+            },
+            "transparency_log_sign_algo": {
+                "section": "verifier",
+                "option": "transparency_log_sign_algo",
+                "default": "sha256"
+            },
+            "signed_attributes": {
+                "section": "verifier",
+                "option": "signed_attributes",
+                "default": ""
+            }
+        },
+        "revocations": {
+            "enabled_revocation_notifications": {
+                "section": "revocations",
+                "option": "enabled_revocation_notifications",
+                "default": "['agent']"
+            },
+            "zmq_ip": {
+                "section": "revocations",
+                "option": "zmq_ip",
+                "default": "127.0.0.1"
+            },
+            "zmq_port": {
+                "section": "revocations",
+                "option": "zmq_port",
+                "default": "8992"
+            },
+            "webhook_url": {
+                "section": "revocations",
+                "option": "webhook_url",
+                "default": ""
+            }
+        },
+        "tenant": {
+            "version": {
+                "section": "tenant",
+                "option": "version",
+                "default": "3.0"
+            },
+            "verifier_ip": {
+                "section": "tenant",
+                "option": "verifier_ip",
+                "default": "127.0.0.1"
+            },
+            "verifier_port": {
+                "section": "tenant",
+                "option": "verifier_port",
+                "default": "8881"
+            },
+            "registrar_ip": {
+                "section": "tenant",
+                "option": "registrar_ip",
+                "default": "127.0.0.1"
+            },
+            "registrar_port": {
+                "section": "tenant",
+                "option": "registrar_port",
+                "default": "8891"
+            },
+            "tls_dir": {
+                "section": "tenant",
+                "option": "tls_dir",
+                "default": "default"
+            },
+            "enable_agent_mtls": {
+                "section": "tenant",
+                "option": "enable_agent_mtls",
+                "default": "True"
+            },
+            "client_key": {
+                "section": "tenant",
+                "option": "client_key",
+                "default": "default"
+            },
+            "client_key_password": {
+                "section": "tenant",
+                "option": "client_key_password",
+                "default": ""
+            },
+            "client_cert": {
+                "section": "tenant",
+                "option": "client_cert",
+                "default": "default"
+            },
+            "trusted_server_ca": {
+                "section": "tenant",
+                "option": "trusted_server_ca",
+                "default": "default"
+            },
+            "tpm_cert_store": {
+                "section": "tenant",
+                "option": "tpm_cert_store",
+                "default": "/var/lib/keylime/tpm_cert_store"
+            },
+            "max_payload_size": {
+                "section": "tenant",
+                "option": "max_payload_size",
+                "default": "1048576"
+            },
+            "accept_tpm_hash_algs": {
+                "section": "tenant",
+                "option": "accept_tpm_hash_algs",
+                "default": "['sha512', 'sha384', 'sha256']"
+            },
+            "accept_tpm_encryption_algs": {
+                "section": "tenant",
+                "option": "accept_tpm_encryption_algs",
+                "default": "['ecc', 'rsa']"
+            },
+            "accept_tpm_signing_algs": {
+                "section": "tenant",
+                "option": "accept_tpm_signing_algs",
+                "default": "['ecschnorr', 'rsassa']"
+            },
+            "exponential_backoff": {
+                "section": "tenant",
+                "option": "exponential_backoff",
+                "default": "True"
+            },
+            "retry_interval": {
+                "section": "tenant",
+                "option": "retry_interval",
+                "default": "2"
+            },
+            "max_retries": {
+                "section": "tenant",
+                "option": "max_retries",
+                "default": "5"
+            },
+            "request_timeout": {
+                "section": "tenant",
+                "option": "request_timeout",
+                "default": "60"
+            },
+            "require_ek_cert": {
+                "section": "tenant",
+                "option": "require_ek_cert",
+                "default": "True"
+            },
+            "ek_check_script": {
+                "section": "tenant",
+                "option": "ek_check_script",
+                "default": ""
+            },
+            "mb_refstate": {
+                "section": "tenant",
+                "option": "mb_refstate",
+                "default": ""
+            }
+        },
+        "registrar": {
+            "version": {
+                "section": "registrar",
+                "option": "version",
+                "default": "3.0"
+            },
+            "ip": {
+                "section": "registrar",
+                "option": "ip",
+                "default": "127.0.0.1"
+            },
+            "port": {
+                "section": "registrar",
+                "option": "port",
+                "default": "8890"
+            },
+            "tls_port": {
+                "section": "registrar",
+                "option": "tls_port",
+                "default": "8891"
+            },
+            "tls_dir": {
+                "section": "registrar",
+                "option": "tls_dir",
+                "default": "default"
+            },
+            "server_key": {
+                "section": "registrar",
+                "option": "server_key",
+                "default": "default"
+            },
+            "server_key_password": {
+                "section": "registrar",
+                "option": "server_key_password",
+                "default": ""
+            },
+            "server_cert": {
+                "section": "registrar",
+                "option": "server_cert",
+                "default": "default"
+            },
+            "trusted_client_ca": {
+                "section": "registrar",
+                "option": "trusted_client_ca",
+                "default": "default"
+            },
+            "database_url": {
+                "section": "registrar",
+                "option": "database_url",
+                "default": "sqlite"
+            },
+            "database_pool_sz_ovfl": {
+                "section": "registrar",
+                "option": "database_pool_sz_ovfl",
+                "default": "5,10"
+            },
+            "auto_migrate_db": {
+                "section": "registrar",
+                "option": "auto_migrate_db",
+                "default": "True"
+            },
+            "durable_attestation_import": {
+                "section": "registrar",
+                "option": "durable_attestation_import",
+                "default": ""
+            },
+            "persistent_store_url": {
+                "section": "registrar",
+                "option": "persistent_store_url",
+                "default": ""
+            },
+            "transparency_log_url": {
+                "section": "registrar",
+                "option": "transparency_log_url",
+                "default": ""
+            },
+            "time_stamp_authority_url": {
+                "section": "registrar",
+                "option": "time_stamp_authority_url",
+                "default": ""
+            },
+            "time_stamp_authority_certs_path": {
+                "section": "registrar",
+                "option": "time_stamp_authority_certs_path",
+                "default": ""
+            },
+            "persistent_store_format": {
+                "section": "registrar",
+                "option": "persistent_store_format",
+                "default": "json"
+            },
+            "persistent_store_encoding": {
+                "section": "registrar",
+                "option": "persistent_store_encoding",
+                "default": ""
+            },
+            "transparency_log_sign_algo": {
+                "section": "registrar",
+                "option": "transparency_log_sign_algo",
+                "default": "sha256"
+            },
+            "signed_attributes": {
+                "section": "registrar",
+                "option": "signed_attributes",
+                "default": "ek_tpm,aik_tpm,ekcert"
+            },
+            "tpm_identity": {
+                "section": "registrar",
+                "option": "tpm_identity",
+                "default": "default"
+            },
+            "malformed_cert_action": {
+                "section": "registrar",
+                "option": "malformed_cert_action",
+                "default": "warn"
+            }
+        },
+        "ca": {
+            "version": {
+                "section": "ca",
+                "option": "version",
+                "default": "3.0"
+            },
+            "password": {
+                "section": "ca",
+                "option": "password",
+                "default": "default"
+            },
+            "cert_country": {
+                "section": "ca",
+                "option": "cert_country",
+                "default": "US"
+            },
+            "cert_ca_name": {
+                "section": "ca",
+                "option": "cert_ca_name",
+                "default": "Keylime Certificate Authority"
+            },
+            "cert_state": {
+                "section": "ca",
+                "option": "cert_state",
+                "default": "MA"
+            },
+            "cert_locality": {
+                "section": "ca",
+                "option": "cert_locality",
+                "default": "Lexington"
+            },
+            "cert_organization": {
+                "section": "ca",
+                "option": "cert_organization",
+                "default": "MITLL"
+            },
+            "cert_org_unit": {
+                "section": "ca",
+                "option": "cert_org_unit",
+                "default": "53"
+            },
+            "cert_ca_lifetime": {
+                "section": "ca",
+                "option": "cert_ca_lifetime",
+                "default": "3650"
+            },
+            "cert_lifetime": {
+                "section": "ca",
+                "option": "cert_lifetime",
+                "default": "365"
+            },
+            "cert_bits": {
+                "section": "ca",
+                "option": "cert_bits",
+                "default": "2048"
+            },
+            "cert_crl_dist": {
+                "section": "ca",
+                "option": "cert_crl_dist",
+                "default": "http://localhost:38080/crl"
+            }
+        },
+        "logging": {
+            "version": {
+                "section": "logging",
+                "option": "version",
+                "default": "3.0"
+            }
+        },
+        "loggers": {
+            "keys": {
+                "section": "loggers",
+                "option": "keys",
+                "default": "root,keylime"
+            }
+        },
+        "handlers": {
+            "keys": {
+                "section": "handlers",
+                "option": "keys",
+                "default": "consoleHandler"
+            }
+        },
+        "formatters": {
+            "keys": {
+                "section": "formatters",
+                "option": "keys",
+                "default": "formatter"
+            }
+        },
+        "formatter_formatter": {
+            "format": {
+                "section": "formatter_formatter",
+                "option": "format",
+                "default": "%(asctime)s.%(msecs)03d - %(name)s - %(levelname)s - %(message)s %(reqidf)s"
+            },
+            "datefmt": {
+                "section": "formatter_formatter",
+                "option": "datefmt",
+                "default": "%Y-%m-%d %H:%M:%S"
+            }
+        },
+        "logger_root": {
+            "level": {
+                "section": "logger_root",
+                "option": "level",
+                "default": "INFO"
+            },
+            "handlers": {
+                "section": "logger_root",
+                "option": "handlers",
+                "default": "consoleHandler"
+            }
+        },
+        "handler_consoleHandler": {
+            "class": {
+                "section": "handler_consoleHandler",
+                "option": "class",
+                "default": "StreamHandler"
+            },
+            "level": {
+                "section": "handler_consoleHandler",
+                "option": "level",
+                "default": "INFO"
+            },
+            "formatter": {
+                "section": "handler_consoleHandler",
+                "option": "formatter",
+                "default": "formatter"
+            },
+            "args": {
+                "section": "handler_consoleHandler",
+                "option": "args",
+                "default": "(sys.stdout,)"
+            }
+        },
+        "logger_keylime": {
+            "level": {
+                "section": "logger_keylime",
+                "option": "level",
+                "default": "INFO"
+            },
+            "qualname": {
+                "section": "logger_keylime",
+                "option": "qualname",
+                "default": "keylime"
+            },
+            "handlers": {
+                "section": "logger_keylime",
+                "option": "handlers",
+                "default": ""
+            }
+        }
+    },
+    "subcomponents": {
+        "revocations": "verifier",
+        "loggers": "logging",
+        "handlers": "logging",
+        "formatters": "logging",
+        "formatter_formatter": "logging",
+        "logger_root": "logging",
+        "handler_consoleHandler": "logging",
+        "logger_keylime": "logging"
+    }
+}

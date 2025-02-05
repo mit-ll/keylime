@@ -1,0 +1,212 @@
+# Keylime registrar configuration
+[registrar]
+
+# The configuration file version number
+version = {{ registrar.version }}
+
+# The binding address and port for the registrar server
+ip = "{{ registrar.ip }}"
+port = {{ registrar.port }}
+tls_port = {{ registrar.tls_port }}
+
+# The 'tls_dir' option define the directory where the keys and certificates are
+# stored.
+#
+# If set as 'generate', automatically generate a CA, keys, and certificates for
+# the registrar server in the /var/lib/keylime/reg_ca directory, if not present.
+#
+# The 'server_key', 'server_cert', and 'trusted_client_ca' options should all be
+# set with the 'default' keyword when 'generate' keyword is set for 'tls_dir'.
+#
+# If set as 'default', share the files with the verifier by using the
+# 'var/lib/keylime/cv_ca' directory, which should contain the files indicated by
+# the 'server_key', 'server_cert', and 'trusted_client_ca' options.
+tls_dir = {{ registrar.tls_dir }}
+
+# The keystore password
+# This password is used to protect the generated CA private key.
+password = {{ ca.password }}
+
+# CountryName argument (C) of the Issuer when generating certificates
+cert_country = {{ ca.cert_country }}
+
+# CommonName argument (CN) of the Issuer when generating certificates
+cert_ca_name = {{ ca.cert_ca_name }}
+
+# StateOrProvinceName argument (S) of the Issuer when generating certificates
+cert_state = {{ ca.cert_state }}
+
+# Locality argument (L) of the Issuer when generating certificates
+cert_locality = {{ ca.cert_locality }}
+
+# Organization argument (O) of the Issuer when generating certificates
+cert_organization = {{ ca.cert_organization }}
+
+# OrganizationalUnit argument (OU) of the Issuer when generating certificates
+cert_org_unit = {{ ca.cert_org_unit }}
+
+# CA certificate validity time in days
+cert_ca_lifetime = {{ ca.cert_ca_lifetime }}
+
+# Default generated certificate validity time in days
+cert_lifetime = {{ ca.cert_lifetime }}
+
+# Key length in bits
+cert_bits = {{ ca.cert_bits }}
+
+# Certification Revocation List (CRL) distribution address (URL)
+cert_crl_dist = {{ ca.cert_crl_dist }}
+
+# The name of the file containing the Keylime registrar server private key.
+# The file should be stored in the directory set in the 'tls_dir' option.
+# This private key is used to serve the Keylime registrar REST API
+#
+# If set as 'default', the 'server-private.pem' value is used.
+server_key = {{ registrar.server_key }}
+
+# Set the password used to decrypt the private key file.
+# If 'tls_dir = generate', this password will also be used to protect the
+# generated server private key.
+# If left empty, the private key will not be encrypted.
+server_key_password = {{ registrar.server_key_password }}
+
+# The name of the file containing the Keylime registrar server certificate.
+# The file should be stored in the directory set in the 'tls_dir' option.
+#
+# If set as 'default', the 'server-cert.crt' value is used.
+server_cert = {{ registrar.server_cert }}
+
+# The list of trusted client CA certificates.
+# The files in the list should be stored in the directory set in the 'tls_dir'
+# option.
+#
+# If set as 'default', the value is set as '[cacert.crt]'
+trusted_client_ca = {{ registrar.trusted_client_ca }}
+
+# Database URL Configuration
+# See this document https://keylime.readthedocs.io/en/latest/installation.html#database-support
+# for instructions on using different database configurations.
+#
+# An example of database_url value for using sqlite:
+#   sqlite:////var/lib/keylime/reg_data.sqlite
+# An example of database_url value for using mysql:
+#   mysql+pymysql://keylime:keylime@keylime_db:[port]/registrar?charset=utf8
+#
+# If set as 'sqlite' keyword, will use the configuration set by the file located
+# at "/var/lib/keylime/reg_data.sqlite".
+database_url = {{ registrar.database_url }}
+
+# Limits for DB connection pool size in sqlalchemy
+# (https://docs.sqlalchemy.org/en/14/core/pooling.html#api-documentation-available-pool-implementations)
+database_pool_sz_ovfl = {{ registrar.database_pool_sz_ovfl }}
+
+# Whether to automatically update the DB schema using alembic
+auto_migrate_db = {{ registrar.auto_migrate_db }}
+
+# Durable Attestation is currently marked as an experimental feature
+# In order to enable Durable Attestation, an "adapter" for a Persistent data Store 
+# (time-series like database) needs to be specified. Some example adapters can be 
+# found under "da/examples" so, for instance 
+#      "durable_attestation_import = keylime.da.examples.redis.py"
+# could be used to interact with a Redis (Persistent data Store)
+durable_attestation_import = {{ registrar.durable_attestation_import }}
+
+# If an adapter for Durable Attestation was specified, then the URL for a Persistent Store
+# needs to be specified here. A second optional URL could be specified, for a 
+# Rekor Transparency Log. A third additional URL could be specified, pointing to a 
+# Time Stamp Authority (TSA), compatible with RFC3161. Additionally, one might need to 
+# specify a path containing certificates required by the stores or TSA. Continuing with 
+# the above example, the following values could be assigned to the parameters: 
+#      "persistent_store_url=redis://127.0.0.1:6379?db=10&password=/root/redis.auth&prefix=myda"
+#      "transparency_log_url=http://127.0.0.1:3000"
+#      "time_stamp_authority_url=http://127.0.0.1:2020"
+#      "time_stamp_authority_certs_path=~/mycerts/tsa_cert1.pem"
+persistent_store_url = {{ registrar.persistent_store_url }}
+transparency_log_url = {{ registrar.transparency_log_url }}
+time_stamp_authority_url = {{ registrar.time_stamp_authority_url }}
+time_stamp_authority_certs_path = {{ registrar.time_stamp_authority_certs_path }}
+
+# If Durable Attestation was enabled, which requires a Persistent Store URL 
+# to be specified, the two following parameters control the format and enconding
+# of the stored attestation artifacts (defaults "json" for format and "" for encoding)
+persistent_store_format = {{ registrar.persistent_store_format }}
+persistent_store_encoding = {{ registrar.persistent_store_encoding }}
+
+# If Durable Attestation was enabled with a Transparency Log URL was specified,
+# the digest algorithm for signatures is controlled by this parameter (default "sha256")
+transparency_log_sign_algo = {{ registrar.transparency_log_sign_algo }}
+
+# If Durable Attestation was enabled with a Transparency Log URL was specified,
+# a keylime administrator can specify some agent attributes (including attestation
+# artifacts, such as quotes and logs) to be signed by the registrar. The use of "all"
+# will result in the whole "package" (agent + artifacts) being signed and leaving it empty
+# will mean no signing should be done.
+signed_attributes = {{ registrar.signed_attributes }}
+
+# What TPM-based identity is allowed to be used to register agents.
+# The options "default" and "iak_idevid" will only allow registration with IAK and IDevID if python cryptography is version 38.0.0 or higher.
+# The following options are accepted:
+# "default": either an EK or IAK and IDevID may be used. In the case that cryptography version is <38.0.0 only EK will be used
+# "ek_cert_or_iak_idevid": this is equivalent to default
+# "ek_cert": only allow agents to use an EK to register
+# "iak_idevid": only allow agents with an IAK and IDevID to register
+tpm_identity = {{ registrar.tpm_identity }}
+
+# The below option controls what Keylime does when it encounters a certificate which is not parse-able when strict
+# ASN.1 Distinguished Encoding Rules (DER) are enforced. The default behaviour ("warn") is to log a warning but still
+# accept the certificate, so long as it can be interpreted by a fallback parser.
+# The following values are accepted:
+# "warn": log a warning and re-encode the certificate with the more-forgiving fallback parser (the default)
+# "reject": log an error and refuse to accept the certificate
+# "ignore": silently re-encode the certificate without logging a message
+malformed_cert_action = {{ registrar.malformed_cert_action }}
+
+# Logging Configuration Template
+# This section contains the default logging configuration for the application.
+# Key Points:
+# 1. The current settings reflect the default configuration.
+# 2. Uncomment sections to override the defaults.
+# 3. You can create new handlers and attach them to custom loggers for specific use cases.
+
+# Formatters Section
+# Define the format of log messages. Uncomment and modify to customize.
+
+#[formatter_formatter]
+#format = {{ formatter_formatter.format }}
+#datefmt = {{ formatter_formatter.datefmt }}
+
+# Handlers Section
+# Define where log messages are sent. Uncomment and modify to customize.
+
+# Default console handler for the root logger.
+#[handler_consoleHandler]
+#class = {{ handler_consoleHandler.class }}
+#level = {{ handler_consoleHandler.level }}
+#formatter = {{ handler_consoleHandler.formatter }}
+#args = {{ handler_consoleHandler.args }}
+
+# Loggers Section
+# The root and keylime logger configuration. Uncomment and modify to customize.
+
+#[logger_root]
+#level = {{ logger_root.level }}
+#handlers = {{ logger_root.handlers }}
+
+#[logger_keylime]
+#level = {{ logger_keylime.level }}
+
+# EXAMPLE Section
+# Define additional loggers for specific components. Uncomment and modify as needed.
+
+# File handler for logging to a file.
+#[handler_file]
+#class = logging.FileHandler
+#level = DEBUG
+#formatter = formatter
+#args = (registrar.log,)
+
+# Logger for a custom component.
+#[logger_keylime.registrar]
+#level = DEBUG
+#handlers = file
+#propagate = 1

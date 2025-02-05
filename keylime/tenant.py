@@ -385,13 +385,13 @@ class Tenant:
             if args["ca_dir"] == "default":
                 args["ca_dir"] = config.CA_WORK_DIR
 
-            ca_util.ask_password(args["ca_dir_pw"])
+            ca_util.ask_password("tenant", args["ca_dir_pw"])
 
             if not os.path.exists(args["ca_dir"]) or not os.path.exists(os.path.join(args["ca_dir"], "cacert.crt")):
                 logger.warning("CA directory does not exist. Creating...")
-                ca_util.cmd_init(args["ca_dir"])
+                ca_util.cmd_init("tenant", args["ca_dir"])
             if not os.path.exists(os.path.join(args["ca_dir"], f"{self.agent_uuid}-private.pem")):
-                ca_util.cmd_mkcert(args["ca_dir"], self.agent_uuid)
+                ca_util.cmd_mkcert("tenant", args["ca_dir"], self.agent_uuid)
 
             try:
                 cert_pkg, serial, subject = ca_util.cmd_certpkg(args["ca_dir"], self.agent_uuid)
@@ -400,7 +400,7 @@ class Tenant:
 
             # support revocation
             if not os.path.exists(os.path.join(args["ca_dir"], "RevocationNotifier-private.pem")):
-                ca_util.cmd_mkcert(args["ca_dir"], "RevocationNotifier")
+                ca_util.cmd_mkcert("tenant", args["ca_dir"], "RevocationNotifier")
             rev_package, _, _ = ca_util.cmd_certpkg(args["ca_dir"], "RevocationNotifier")
 
             # extract public and private keys from package

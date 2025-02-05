@@ -1,0 +1,258 @@
+# Keylime agent configuration
+# The Python agent is deprecated and will be removed with the next major release (7.0.0)!
+# Please migrate to the Rust based agent: https://github.com/keylime/rust-keylime/
+[agent]
+
+# The configuration file version number
+version = "{{ agent.version }}"
+
+# The enabled API versions
+# This sets which of the supported API versions to enable.
+# Only supported versions can be set, which are defined by
+# api::SUPPORTED_API_VERSIONS
+# A list of versions to enable can be provided (e.g. "2.1, 2.2")
+# The following keywords are also supported:
+# - "default": Enables all supported API versions
+# - "latest": Enables only the latest supported API version
+api_versions = "{{ agent.api_versions }}"
+
+# The agent's UUID.
+# If you set this to "generate", Keylime will create a random UUID.
+# If you set this to "hash_ek", Keylime will set the UUID to the result
+# of 'SHA256(public EK in PEM format)'.
+# If you set this to "environment", Keylime will use the value of the
+# environment variable "KEYLIME_AGENT_UUID" as UUID.
+# If you set this to "dmidecode", Keylime will use the UUID from
+# 'dmidecode -s system-uuid'.
+# If you set this to "hostname", Keylime will use the full qualified domain
+# name of current host as the agent id.
+uuid = "{{ agent.uuid }}"
+
+# The binding address and port for the agent server
+ip = "{{ agent.ip }}"
+port = {{ agent.port }}
+
+# Address and port where the verifier and tenant can connect to reach the agent.
+# These keys are optional.
+contact_ip = "{{ agent.contact_ip }}"
+contact_port = {{ agent.contact_port }}
+
+# The address and port of registrar server which agent communicate with
+registrar_ip = "{{ agent.registrar_ip }}"
+registrar_port = {{ agent.registrar_port }}
+
+# Enable mTLS communication between agent, verifier and tenant.
+# Details on why setting it to "False" is generally considered insecure can be found
+# on https://github.com/keylime/keylime/security/advisories/GHSA-2m39-75g9-ff5r
+enable_agent_mtls = {{ agent.enable_agent_mtls }}
+
+# The 'tls_dir' option define the directory where the keys and certificates are
+# stored.
+#
+# If set as 'generate', automatically generate a CA, keys, and certificates for
+# the client and the server in the /var/lib/keylime/cv_ca directory, if not
+# present.
+#
+# The 'server_key', 'server_cert', and 'trusted_client_ca' options should all be
+# set with the 'default' keyword when 'generate' keyword is set for 'tls_dir'.
+#
+# If set as 'default', the 'var/lib/keylime/secure' directory is used, which
+# should contain the files indicated by the 'server_key', 'server_cert',
+# and 'trusted_client_ca' options.
+tls_dir = "{{ agent.tls_dir }}"
+
+# The name of the file containing the Keylime agent TLS server private key.
+# This private key is used to serve the Keylime agent REST API
+# A new private key is generated in case it is not found.
+# If set as 'default', the 'server-private.pem' value is used.
+server_key = "{{ agent.server_key }}"
+
+# Set the password used to decrypt the private key file.
+# This password will also be used to protect the generated private key used for
+# mTLS authentication
+# If left empty, the private key will not be encrypted.
+server_key_password = "{{ agent.server_key_password }}"
+
+# The name of the file containing the X509 certificate used as the Keylime agent
+# server TLS certificate.
+# This certificate must be self signed.
+server_cert = "{{ agent.server_cert }}"
+
+# A list of trusted client CA certificates
+trusted_client_ca = "{{ agent.trusted_client_ca }}"
+
+# The name of the file used to store the payload encryption key, derived from
+# the U and V parts.
+# This file is stored in the /var/lib/keylime/secure/ directory.
+enc_keyname = "{{ agent.enc_keyname }}"
+
+# The name of the file used to store the optional decrypted payload.
+# This file is istored in the /var/lib/keylime/secure/ directory.
+dec_payload_file = "{{ agent.dec_payload_file }}"
+
+# The size of the memory-backed tmpfs partition where Keylime stores keys and
+# the decrypted payload.
+# Use syntax that the 'mount' command would accept as a size parameter for tmpfs.
+# The default below sets it to 1 megabyte.
+secure_size =  "{{ agent.secure_size }}"
+
+# Use this option to set the TPM ownerpassword to something you want to use.
+# Set it to "generate" if you want Keylime to choose a random owner password
+# for you.
+tpm_ownerpassword = "{{ agent.tpm_ownerpassword }}"
+
+# Whether to allow the agent to automatically extract a zip file in
+# the delivered payload after it has been decrypted, or not. Defaults to "True".
+# After decryption, the archive will be unzipped to a directory in /var/lib/keylime/secure.
+# Note: the limits on the size of the tmpfs partition set above with the 'secure_size'
+# option will affect this.
+extract_payload_zip = {{ agent.extract_payload_zip }}
+
+# Whether to listen for revocation notifications from the verifier via ZeroMQ
+enable_revocation_notifications = {{ agent.enable_revocation_notifications }}
+
+# The IP to listen for revocation notifications via ZeroMQ
+revocation_notification_ip = "{{ agent.revocation_notification_ip }}"
+
+# The port to listen for revocation notifications via ZeroMQ
+revocation_notification_port = {{ agent.revocation_notification_port }}
+
+# The path to the certificate to verify revocation messages received from the
+# verifier.  The path is relative to /var/lib/keylime.
+# If set to "default", Keylime will use the file RevocationNotifier-cert.crt
+# from the unzipped contents provided by the tenant.
+revocation_cert = "{{ agent.revocation_cert }}"
+
+# A comma-separated list of Python scripts to run upon receiving a revocation
+# message. Keylime will verify the signature first, then call these Python
+# scripts with the json revocation message passed as argument.  The scripts must
+# be located in the directory set via 'revocation_actions_dir'
+#
+# Keylime will also get the list of revocation actions from the file
+# action_list in the unzipped payload content.
+revocation_actions = "{{ agent.revocation_actions }}"
+
+# A script to execute after unzipping the tenant payload.  This is like
+# cloud-init lite =)  Keylime will run it with a /bin/sh environment and
+# with a working directory of /var/lib/keylime/secure/unzipped.
+payload_script = "{{ agent.payload_script }}"
+
+# In case mTLS for the agent is disabled and the use of payloads is still
+# required, this option has to be set to "True" in order to allow the agent
+# to start. Details on why this configuration (mTLS disabled and payload enabled)
+# is generally considered insecure can be found on
+# https://github.com/keylime/keylime/security/advisories/GHSA-2m39-75g9-ff5r
+enable_insecure_payload = {{ agent.enable_insecure_payload }}
+
+# Extend the delivered payload into a PCR of choice.
+# Specify a PCR number to turn it on.
+# Set to -1 or any negative or out of range PCR value to turn off.
+measure_payload_pcr = {{ agent.measure_payload_pcr }}
+
+# Wether or not to use an exponantial backoff algorithm for retries.
+exponential_backoff = {{ agent.exponential_backoff }}
+
+# Either how long to wait between failed attempts to communicate with the TPM
+# in seconds, or the base for the exponential backoff algorithm if enabled via
+# "exponential_backoff" option.
+# Floating point values are accepted.
+retry_interval = {{ agent.retry_interval }}
+
+# Integer number of retries to communicate with the TPM before giving up.
+max_retries = {{ agent.max_retries }}
+
+# List of hash algorithms used for PCRs
+# Accepted values: sha512, sha384, sha256, sha1
+tpm_hash_alg = "{{ agent.tpm_hash_alg }}"
+
+# List of encryption algorithms to use with the TPM
+# Accepted values: ecc, rsa
+tpm_encryption_alg = "{{ agent.tpm_encryption_alg }}"
+
+# List of signature algorithms to use
+# Accepted values: rsassa, rsapss, ecdsa, ecdaa, ecschnorr
+tpm_signing_alg = "{{ agent.tpm_signing_alg }}"
+
+# If an EK is already present on the TPM (e.g., with "tpm2_createek") and
+# you require Keylime to use this EK, change "generate" to the actual EK
+# handle (e.g. "0x81000000"). The Keylime agent will then not attempt to
+# create a new EK upon startup, and neither will it flush the EK upon exit.
+ek_handle = "{{ agent.ek_handle }}"
+
+# Enable IDevID and IAK usage 
+enable_iak_idevid = {{ agent.enable_iak_idevid }}
+
+# Select IDevID and IAK templates or algorithms for regenerating the keys.
+# By default the template will be detected automatically from the certificates. This will happen in iak_idevid_template is left empty or set as "default" or "detect".
+# Choosing a template will override the name and asymmetric algorithm choices. To use these choices, set iak_idevid_template to "manual"
+# Templates are specified in the TCG document found here, section 7.3.4: 
+# https://trustedcomputinggroup.org/wp-content/uploads/TPM-2p0-Keys-for-Device-Identity-and-Attestation_v1_r12_pub10082021.pdf
+#
+# Accepted values:
+# iak_idevid_template:        default, detect, H-1, H-2, H-3, H-4, H-5, manual
+# iak_idevid_asymmetric_alg:   rsa, ecc
+# iak_idevid_name_alg:        sha256, sm3_256, sha384, sha512
+iak_idevid_template = "{{ agent.iak_idevid_template }}"
+# In order for these values to be used, set the iak_idevid_template option to manual
+iak_idevid_asymmetric_alg = "{{ agent.iak_idevid_asymmetric_alg }}"
+iak_idevid_name_alg = "{{ agent.iak_idevid_name_alg }}"
+
+# Alternatively if the keys are persisted, provide the handles for their location below, and optionally their passwords.
+# If handles are provided, they will take priority over templates/algorithms selected above.
+# To use a hex password, use the prefix "hex:" at the start of the password.
+idevid_password = "{{ agent.idevid_password }}"
+idevid_handle = "{{ agent.idevid_handle }}"
+
+iak_password = "{{ agent.iak_password }}"
+iak_handle = "{{ agent.iak_handle }}"
+
+# The name of the file containing the X509 IAK certificate.
+# If set as "default", the "iak-cert.crt" value is used
+# If a relative path is set, it will be considered relative from the keylime_dir.
+# If an absolute path is set, it is used without change.
+#
+# To override iak_cert, set KEYLIME_AGENT_IAK_CERT environment variable.
+iak_cert = "{{ agent.iak_cert }}"
+
+# The name of the file containing the X509 IDevID certificate.
+# If set as "default", the "idevid-cert.crt" value is used
+# If a relative path is set, it will be considered relative from the keylime_dir.
+# If an absolute path is set, it is used without change.
+#
+# To override idevid_cert, set KEYLIME_AGENT_IDEVID_CERT environment variable.
+idevid_cert = "{{ agent.idevid_cert }}"
+
+# The user account to switch to to drop privileges when started as root
+# If left empty, the agent will keep running with high privileges.
+# The user and group specified here must allow the user to access the
+# WORK_DIR (typically /var/lib/keylime) and /dev/tpmrm0. Therefore,
+# suggested value for the run_as parameter is keylime:tss.
+# The following commands should be used to set ownership before running the
+# agent:
+# chown keylime /var/lib/keylime
+#
+# If tpmdata.yml already exists:
+# chown keylime /var/lib/keylime/tpmdata.yml
+#
+# If cv_ca directory exists:
+# chown keylime /var/lib/keylime/cv_ca
+# chown keylime /var/lib/keylime/cv_ca/cacert.crt
+run_as = "{{ agent.run_as }}"
+
+# Path from where the agent will read the IMA measurement log.
+#
+# If set as "default", Keylime will use the default path:
+# The default path is /sys/kernel/security/ima/ascii_runtime_measurements
+# If set as a relative path, it will be considered from the root path "/".
+# If set as an absolute path, it will use it without changes
+ima_ml_path = "{{ agent.ima_ml_path }}"
+
+# Path from where the agent will read the measured boot event log.
+#
+# If set as "default", Keylime will use the default path:
+# The default path is /sys/kernel/security/tpm0/binary_bios_measurements
+# If set as a relative path, it will be considered from the root path "/".
+# If set as an absolute path, it will use it without changes
+measuredboot_ml_path = "{{ agent.measuredboot_ml_path }}"
+
+

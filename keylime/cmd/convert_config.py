@@ -541,11 +541,16 @@ def process_update_mapping(
             else:
                 version_component = component
 
-            found_version = old_config.get(version_component, "version")
-            old_version = str_to_version(found_version)
+            try:
+                found_version = old_config.get(version_component, "version")
+                old_version = str_to_version(found_version)
 
-            if not old_version:
-                raise Exception(f"Invalid version number in {version_component}")
+                if not old_version:
+                    raise Exception("Invalid version number found in old configuration")
+
+            except (configparser.NoOptionError, configparser.NoSectionError):
+                logger.debug("No version found in old configuration for %s, using '1.0'", component)
+                old_version = (1, 0)
 
             # Skip versions lower than the current version
             if old_version >= new_version:
