@@ -785,8 +785,7 @@ class AgentsHandler(BaseHandler):
                 logger.warning("POST returning 400 response. uri not supported")
         except Exception as e:
             web_util.echo_json_response(self, 400, f"Exception error: {str(e)}")
-            logger.warning("POST returning 400 response. Exception error: %s", e)
-            logger.exception(e)
+            logger.exception("POST returning 400 response.")
 
     def put(self) -> None:
         """This method handles the PUT requests to add agents to the Cloud Verifier.
@@ -845,8 +844,7 @@ class AgentsHandler(BaseHandler):
 
         except Exception as e:
             web_util.echo_json_response(self, 400, f"Exception error: {str(e)}")
-            logger.warning("PUT returning 400 response. Exception error: %s", e)
-            logger.exception(e)
+            logger.exception("PUT returning 400 response.")
 
     def data_received(self, chunk: Any) -> None:
         raise NotImplementedError()
@@ -1944,8 +1942,7 @@ async def process_agent(
         raise Exception("nothing should ever fall out of this!")
 
     except Exception as e:
-        logger.error("Polling thread error for agent ID %s: %s", agent["agent_id"], e)
-        logger.exception(e)
+        logger.exception("Polling thread error for agent ID %s", agent["agent_id"])
         failure.add_event(
             "exception", {"context": "Agent caused the verifier to throw an exception", "data": str(e)}, False
         )

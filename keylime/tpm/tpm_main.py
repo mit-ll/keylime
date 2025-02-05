@@ -43,9 +43,8 @@ class Tpm:
             credentialblob = tpm_util.makecredential(ek_tpm, challenge, bytes.fromhex(aik_name))
             keyblob = base64.b64encode(credentialblob)
 
-        except Exception as e:
-            logger.error("Error encrypting AIK with EK: %s", str(e))
-            logger.exception(e)
+        except Exception:
+            logger.exception("Error encrypting AIK with EK")
             raise
 
         return (keyblob, key)
@@ -145,9 +144,8 @@ class Tpm:
 
         try:
             return tpm2_objects.get_tpms_attest_clock_info(quoteblob)
-        except Exception as e:
-            logger.error("Error extracting clock info from quote: %s", str(e))
-            logger.exception(e)
+        except Exception:
+            logger.exception("Error extracting clock info from quote")
             return {}
 
     @staticmethod
@@ -175,8 +173,7 @@ class Tpm:
         try:
             pcrs_dict = tpm_util.checkquote(aikFromRegistrar, nonce, sigblob, quoteblob, pcrblob, hash_alg)
         except Exception as e:
-            logger.error("Error verifying quote: %s", str(e))
-            logger.exception(e)
+            logger.exception("Error verifying quote")
             return {}, str(e)
 
         return pcrs_dict, ""

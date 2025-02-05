@@ -153,8 +153,7 @@ class AgentsHandler(BaseHandler):
                 logger.warning("POST returning 400 response. uri not supported")
         except Exception as err:
             keylime.web_util.echo_json_response(self, 400, "Exception error: %s" % err)
-            logger.warning("POST returning 400 response. Exception error: %s" % err)
-            logger.exception(err)
+            logger.exception("POST returning 400 response.")
 
     def put(self):
         """This method handles the PUT requests to add agents to the Agent Monitor.

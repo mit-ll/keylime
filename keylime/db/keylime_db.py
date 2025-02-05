@@ -15,7 +15,7 @@ logger = keylime_logging.init_logging("keylime_db")
 
 # make sure referential integrity is working for SQLite
 @event.listens_for(Engine, "connect")  # type: ignore
-def _set_sqlite_pragma(dbapi_connection: SQLite3Connection, _) -> None:
+def _set_sqlite_pragma(dbapi_connection: SQLite3Connection, _: Any) -> None:
     if isinstance(dbapi_connection, SQLite3Connection):
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
